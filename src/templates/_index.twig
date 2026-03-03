@@ -10,24 +10,25 @@
 
 {% block content %}
     {% if redirects|length %}
-        <table class="data fullwidth">
+        <table class="data fullwidth sortable-table">
             <thead>
                 <tr>
-                    <th>Enabled</th>
-                    <th>From</th>
-                    <th>To</th>
-                    <th>Type</th>
-                    <th>Label</th>
-                    <th>Hits</th>
-                    <th>Last Hit</th>
-                    <th>Notes</th>
+                    <th class="sortable" data-sort="string" data-index="0">Enabled</th>
+                    <th class="sortable" data-sort="string" data-index="1">From</th>
+                    <th class="sortable" data-sort="string" data-index="2">To</th>
+                    <th class="sortable" data-sort="number" data-index="3">Type</th>
+                    <th class="sortable" data-sort="string" data-index="4">Label</th>
+                    <th class="sortable" data-sort="number" data-index="5">Hits</th>
+                    <th class="sortable" data-sort="string" data-index="6">Last Hit</th>
+                    <th class="sortable" data-sort="string" data-index="7">Notes</th>
+                    <th class="sortable" data-sort="string" data-index="8">Created</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 {% for redirect in redirects %}
                     <tr data-id="{{ redirect.id }}">
-                        <td>
+                        <td data-value="{{ redirect.enabled ? '1' : '0' }}">
                             <button class="toggle-enabled btn small {% if redirect.enabled %}submit{% endif %}"
                                     data-id="{{ redirect.id }}"
                                     title="Toggle enabled">
@@ -41,6 +42,7 @@
                         <td>{{ redirect.hitCount }}</td>
                         <td>{{ redirect.lastHitAt ?? '—' }}</td>
                         <td>{{ redirect.notes }}</td>
+                        <td>{{ redirect.dateCreated }}</td>
                         <td class="thin">
                             <a href="{{ cpUrl('redirects/' ~ redirect.id) }}" class="btn small" title="Edit">Edit</a>
                             <button class="btn small delete-redirect" data-id="{{ redirect.id }}" title="Delete">Delete</button>
@@ -53,7 +55,84 @@
         <p>No redirects yet.</p>
     {% endif %}
 
+    {% css %}
+        .sortable-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .sortable-table th.sortable:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        .sortable-table th.sortable::after {
+            content: '';
+            display: inline-block;
+            width: 0;
+            height: 0;
+            margin-left: 5px;
+            vertical-align: middle;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+        }
+        .sortable-table th.sortable.sort-asc::after {
+            border-bottom: 4px solid currentColor;
+            border-top: none;
+        }
+        .sortable-table th.sortable.sort-desc::after {
+            border-top: 4px solid currentColor;
+            border-bottom: none;
+        }
+    {% endcss %}
+
     {% js %}
+        // Sortable table
+        (function() {
+            var table = document.querySelector('.sortable-table');
+            if (!table) return;
+
+            var headers = table.querySelectorAll('th.sortable');
+            var tbody = table.querySelector('tbody');
+            var currentSort = { index: null, dir: 'asc' };
+
+            headers.forEach(function(th) {
+                th.addEventListener('click', function() {
+                    var index = parseInt(th.dataset.index);
+                    var type = th.dataset.sort;
+
+                    if (currentSort.index === index) {
+                        currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        currentSort.index = index;
+                        currentSort.dir = 'asc';
+                    }
+
+                    headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+                    th.classList.add('sort-' + currentSort.dir);
+
+                    var rows = Array.from(tbody.querySelectorAll('tr'));
+                    rows.sort(function(a, b) {
+                        var cellA = a.children[index];
+                        var cellB = b.children[index];
+                        var valA = cellA.dataset.value !== undefined ? cellA.dataset.value : cellA.textContent.trim().toLowerCase();
+                        var valB = cellB.dataset.value !== undefined ? cellB.dataset.value : cellB.textContent.trim().toLowerCase();
+
+                        if (type === 'number') {
+                            valA = parseFloat(valA) || 0;
+                            valB = parseFloat(valB) || 0;
+                        }
+
+                        var result = valA > valB ? 1 : valA < valB ? -1 : 0;
+                        return currentSort.dir === 'desc' ? -result : result;
+                    });
+
+                    rows.forEach(function(row) { tbody.appendChild(row); });
+                });
+            });
+        })();
+
+        // Delete
         document.querySelectorAll('.delete-redirect').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 if (!confirm('Are you sure you want to delete this redirect?')) {
@@ -74,6 +153,7 @@
             });
         });
 
+        // Toggle
         document.querySelectorAll('.toggle-enabled').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var button = this;
@@ -84,6 +164,8 @@
                 }).then(function(response) {
                     var enabled = response.data.enabled;
                     button.textContent = enabled ? 'On' : 'Off';
+                    var cell = button.closest('td');
+                    cell.dataset.value = enabled ? '1' : '0';
                     if (enabled) {
                         button.classList.add('submit');
                     } else {
