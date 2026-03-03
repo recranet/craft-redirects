@@ -105,6 +105,21 @@ class RedirectsController extends Controller
         return $this->renderTemplate('redirects/_import');
     }
 
+    public function actionDownloadExampleCsv(): Response
+    {
+        $csv = "from,to,type,label,notes\n";
+        $csv .= "/old-page,/new-page,301,Livegang,Homepage moved\n";
+        $csv .= "/blog/old-post,/articles/new-post,301,Redesign,Blog restructured\n";
+        $csv .= "/promo,https://example.com/campaign,302,Campagne,Temporary promo redirect\n";
+
+        $response = Craft::$app->getResponse();
+        $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+        $response->headers->set('Content-Disposition', 'attachment; filename="redirects-example.csv"');
+        $response->content = $csv;
+
+        return $response;
+    }
+
     public function actionUploadCsv(): ?Response
     {
         $this->requirePostRequest();

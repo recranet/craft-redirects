@@ -12,7 +12,7 @@
             <div class="heading">
                 <label for="csvFile">CSV File</label>
                 <div class="instructions">
-                    <p>Upload a CSV file with redirect data. The first row should contain column headers.</p>
+                    <p>Upload a CSV file with redirect data. The first row should contain column headers. Column mapping happens in the next step.</p>
                 </div>
             </div>
             <div class="input">
@@ -23,5 +23,46 @@
         <div class="btngroup">
             <button type="submit" class="btn submit">Upload & Preview</button>
         </div>
+    </form>
+
+    <hr style="margin: 24px 0;">
+
+    <h2>Example CSV</h2>
+    <p>Not sure about the format? <a href="{{ actionUrl('redirects/redirects/download-example-csv') }}">Download example CSV</a></p>
+
+    <table class="data fullwidth" style="margin-top: 12px;">
+        <thead>
+            <tr>
+                <th>from</th>
+                <th>to</th>
+                <th>type</th>
+                <th>label</th>
+                <th>notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>/old-page</td>
+                <td>/new-page</td>
+                <td>301</td>
+                <td>Livegang</td>
+                <td>Homepage moved</td>
+            </tr>
+            <tr>
+                <td>/blog/old-post</td>
+                <td>/articles/new-post</td>
+                <td>301</td>
+                <td>Redesign</td>
+                <td>Blog restructured</td>
+            </tr>
+            <tr>
+                <td>/promo</td>
+                <td>https://example.com/campaign</td>
+                <td>302</td>
+                <td>Campagne</td>
+                <td>Temporary promo redirect</td>
+            </tr>
+        </tbody>
+    </table>
     </form>
 {% endblock %}
