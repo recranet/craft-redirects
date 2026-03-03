@@ -15,6 +15,8 @@ class RedirectModel extends Model
     public bool $enabled = true;
     public int $hitCount = 0;
     public ?string $lastHitAt = null;
+    public ?int $createdById = null;
+    public ?string $createdByName = null;
     public ?string $dateCreated = null;
     public ?string $dateUpdated = null;
 
@@ -38,7 +40,7 @@ class RedirectModel extends Model
             ['label', 'string', 'max' => 255],
             ['notes', 'safe'],
             ['enabled', 'boolean'],
-            [['hitCount', 'lastHitAt'], 'safe'],
+            [['hitCount', 'lastHitAt', 'createdById'], 'safe'],
         ];
     }
 }

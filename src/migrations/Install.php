@@ -18,12 +18,22 @@ class Install extends Migration
             'enabled' => $this->boolean()->notNull()->defaultValue(true),
             'hitCount' => $this->integer()->notNull()->defaultValue(0),
             'lastHitAt' => $this->dateTime()->null(),
+            'createdById' => $this->integer()->null(),
             'dateCreated' => $this->dateTime()->notNull(),
             'dateUpdated' => $this->dateTime()->notNull(),
             'uid' => $this->uid(),
         ]);
 
         $this->createIndex(null, '{{%redirects}}', ['fromUrl']);
+
+        $this->addForeignKey(
+            null,
+            '{{%redirects}}',
+            'createdById',
+            '{{%users}}',
+            'id',
+            'SET NULL',
+        );
 
         return true;
     }

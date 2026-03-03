@@ -62,6 +62,12 @@ class RedirectsService extends Component
         $record->notes = $model->notes;
         $record->enabled = $model->enabled;
 
+        // Set createdById on new records
+        if (!$model->id && !$model->createdById) {
+            $currentUser = Craft::$app->getUser()->getIdentity();
+            $record->createdById = $currentUser?->id;
+        }
+
         if (!$record->save()) {
             $model->addErrors($record->getErrors());
             return false;
@@ -132,6 +138,11 @@ class RedirectsService extends Component
         $model->enabled = (bool)$record->enabled;
         $model->hitCount = (int)$record->hitCount;
         $model->lastHitAt = $record->lastHitAt;
+        $model->createdById = $record->createdById ? (int)$record->createdById : null;
+        if ($model->createdById) {
+            $user = Craft::$app->getUsers()->getUserById($model->createdById);
+            $model->createdByName = $user?->fullName ?: $user?->username;
+        }
         $model->dateCreated = $record->dateCreated;
         $model->dateUpdated = $record->dateUpdated;
 

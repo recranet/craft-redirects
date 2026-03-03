@@ -22,6 +22,7 @@
                     <th class="sortable" data-sort="string" data-index="6">Last Hit</th>
                     <th class="sortable" data-sort="string" data-index="7">Notes</th>
                     <th class="sortable" data-sort="string" data-index="8">Created</th>
+                    <th class="sortable" data-sort="string" data-index="9">Created by</th>
                     <th></th>
                 </tr>
             </thead>
@@ -43,6 +44,7 @@
                         <td>{{ redirect.lastHitAt ?? '—' }}</td>
                         <td>{{ redirect.notes }}</td>
                         <td>{{ redirect.dateCreated }}</td>
+                        <td>{{ redirect.createdByName ?? '—' }}</td>
                         <td class="thin">
                             <a href="{{ cpUrl('redirects/' ~ redirect.id) }}" class="btn small" title="Edit">Edit</a>
                             <button class="btn small delete-redirect" data-id="{{ redirect.id }}" title="Delete">Delete</button>
