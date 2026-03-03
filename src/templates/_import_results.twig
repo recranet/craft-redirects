@@ -1,0 +1,47 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Import Results' %}
+{% set selectedSubnavItem = 'import' %}
+
+{% block content %}
+    <div class="field">
+        <p><strong>{{ imported }}</strong> of <strong>{{ total }}</strong> redirects imported successfully.</p>
+    </div>
+
+    {% if errors|length %}
+        <h2>Errors</h2>
+        <table class="data fullwidth" style="margin-top: 8px;">
+            <thead>
+                <tr>
+                    <th>Row</th>
+                    <th>Data</th>
+                    <th>Errors</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for error in errors %}
+                    <tr>
+                        <td>{{ error.row }}</td>
+                        <td>
+                            {% for key, value in error.data %}
+                                <strong>{{ key }}:</strong> {{ value }}<br>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% for field, messages in error.errors %}
+                                {% for message in messages %}
+                                    {{ message }}<br>
+                                {% endfor %}
+                            {% endfor %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <div class="btngroup" style="margin-top: 16px;">
+        <a href="{{ cpUrl('redirects/import') }}" class="btn submit">Import more</a>
+        <a href="{{ cpUrl('redirects') }}" class="btn">View redirects</a>
+    </div>
+{% endblock %}

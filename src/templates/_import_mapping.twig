@@ -1,0 +1,49 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Map CSV Columns' %}
+{% set selectedSubnavItem = 'import' %}
+
+{% block content %}
+    <form method="post">
+        {{ csrfInput() }}
+        {{ actionInput('redirects/redirects/process-import') }}
+        {{ hiddenInput('tempFilename', tempFilename) }}
+
+        <p>Map each CSV column to a redirect field. Columns mapped to <strong>Skip</strong> will be ignored.</p>
+
+        <table class="data fullwidth" style="margin-top: 16px;">
+            <thead>
+                <tr>
+                    {% for header in headers %}
+                        <th>
+                            {{ header }}
+                            <div style="margin-top: 6px;">
+                                <select name="mapping[{{ loop.index0 }}]">
+                                    <option value="skip">Skip</option>
+                                    <option value="fromUrl" {% if header|lower in ['from', 'from url', 'fromurl', 'source', 'old url', 'old'] %}selected{% endif %}>From URL</option>
+                                    <option value="toUrl" {% if header|lower in ['to', 'to url', 'tourl', 'destination', 'new url', 'new', 'target'] %}selected{% endif %}>To URL</option>
+                                    <option value="type" {% if header|lower in ['type', 'status', 'code', 'status code', 'http status'] %}selected{% endif %}>Type</option>
+                                    <option value="notes" {% if header|lower in ['notes', 'note', 'comment', 'comments', 'description'] %}selected{% endif %}>Notes</option>
+                                </select>
+                            </div>
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in previewRows %}
+                    <tr>
+                        {% for cell in row %}
+                            <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="btngroup" style="margin-top: 16px;">
+            <button type="submit" class="btn submit">Import</button>
+            <a href="{{ cpUrl('redirects/import') }}" class="btn">Cancel</a>
+        </div>
+    </form>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set title = redirect.id ? 'Edit redirect' : 'New redirect' %}
+{% set selectedSubnavItem = 'redirects' %}
+{% set fullPageForm = true %}
+
+{% block content %}
+    {{ actionInput('redirects/redirects/save') }}
+    {{ redirectInput('redirects') }}
+
+    {% if redirect.id %}
+        {{ hiddenInput('id', redirect.id) }}
+    {% endif %}
+
+    {{ forms.lightswitchField({
+        label: 'Enabled',
+        instructions: 'Whether this redirect is active.',
+        id: 'enabled',
+        name: 'enabled',
+        on: redirect.enabled,
+    }) }}
+
+    {{ forms.textField({
+        label: 'From URL',
+        instructions: 'The path to redirect from. Must start with <code>/</code>.',
+        id: 'fromUrl',
+        name: 'fromUrl',
+        value: redirect.fromUrl,
+        required: true,
+        errors: redirect.getErrors('fromUrl'),
+        placeholder: '/old-page',
+    }) }}
+
+    {{ forms.textField({
+        label: 'To URL',
+        instructions: 'The destination URL. Can be a relative path or absolute URL.',
+        id: 'toUrl',
+        name: 'toUrl',
+        value: redirect.toUrl,
+        required: true,
+        errors: redirect.getErrors('toUrl'),
+        placeholder: '/new-page or https://example.com',
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Type',
+        instructions: 'The HTTP status code for the redirect. <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#redirection_messages" target="_blank" rel="noopener">Learn more on MDN</a>.',
+        id: 'type',
+        name: 'type',
+        value: redirect.type,
+        options: typeOptions,
+        errors: redirect.getErrors('type'),
+    }) }}
+
+    {{ forms.textareaField({
+        label: 'Notes',
+        instructions: 'Optional notes about this redirect.',
+        id: 'notes',
+        name: 'notes',
+        value: redirect.notes,
+        rows: 3,
+        errors: redirect.getErrors('notes'),
+    }) }}
+{% endblock %}

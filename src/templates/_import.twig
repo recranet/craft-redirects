@@ -1,0 +1,27 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Import Redirects' %}
+{% set selectedSubnavItem = 'import' %}
+
+{% block content %}
+    <form method="post" enctype="multipart/form-data">
+        {{ csrfInput() }}
+        {{ actionInput('redirects/redirects/upload-csv') }}
+
+        <div class="field">
+            <div class="heading">
+                <label for="csvFile">CSV File</label>
+                <div class="instructions">
+                    <p>Upload a CSV file with redirect data. The first row should contain column headers.</p>
+                </div>
+            </div>
+            <div class="input">
+                <input type="file" id="csvFile" name="csvFile" accept=".csv,.txt">
+            </div>
+        </div>
+
+        <div class="btngroup">
+            <button type="submit" class="btn submit">Upload & Preview</button>
+        </div>
+    </form>
+{% endblock %}
