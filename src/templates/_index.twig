@@ -17,6 +17,7 @@
                     <th>From</th>
                     <th>To</th>
                     <th>Type</th>
+                    <th>Label</th>
                     <th>Hits</th>
                     <th>Last Hit</th>
                     <th>Notes</th>
@@ -36,6 +37,7 @@
                         <td><a href="{{ cpUrl('redirects/' ~ redirect.id) }}">{{ redirect.fromUrl }}</a></td>
                         <td>{{ redirect.toUrl }}</td>
                         <td>{{ redirect.type }}</td>
+                        <td>{{ redirect.label ?? '' }}</td>
                         <td>{{ redirect.hitCount }}</td>
                         <td>{{ redirect.lastHitAt ?? '—' }}</td>
                         <td>{{ redirect.notes }}</td>

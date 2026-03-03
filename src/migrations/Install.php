@@ -13,6 +13,7 @@ class Install extends Migration
             'fromUrl' => $this->string(500)->notNull(),
             'toUrl' => $this->string(500)->notNull(),
             'type' => $this->smallInteger()->notNull()->defaultValue(301),
+            'label' => $this->string(255)->null(),
             'notes' => $this->text(),
             'enabled' => $this->boolean()->notNull()->defaultValue(true),
             'hitCount' => $this->integer()->notNull()->defaultValue(0),

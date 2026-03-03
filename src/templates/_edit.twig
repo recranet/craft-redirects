@@ -53,6 +53,16 @@
         errors: redirect.getErrors('type'),
     }) }}
 
+    {{ forms.textField({
+        label: 'Label',
+        instructions: 'Optional label to categorize this redirect, e.g. "Livegang", "Redesign".',
+        id: 'label',
+        name: 'label',
+        value: redirect.label,
+        errors: redirect.getErrors('label'),
+        placeholder: 'e.g. Livegang',
+    }) }}
+
     {{ forms.textareaField({
         label: 'Notes',
         instructions: 'Optional notes about this redirect.',

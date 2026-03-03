@@ -49,6 +49,7 @@ class RedirectsController extends Controller
         $model->fromUrl = $request->getBodyParam('fromUrl');
         $model->toUrl = $request->getBodyParam('toUrl');
         $model->type = (int)$request->getBodyParam('type', 301);
+        $model->label = $request->getBodyParam('label');
         $model->notes = $request->getBodyParam('notes');
         $model->enabled = (bool)$request->getBodyParam('enabled', true);
 

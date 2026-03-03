@@ -15,7 +15,7 @@ use yii\base\Event;
  */
 class Redirects extends Plugin
 {
-    public string $schemaVersion = '1.1.0';
+    public string $schemaVersion = '1.2.0';
     public bool $hasCpSection = true;
 
     public static function config(): array

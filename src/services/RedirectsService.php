@@ -58,6 +58,7 @@ class RedirectsService extends Component
         $record->fromUrl = $model->fromUrl;
         $record->toUrl = $model->toUrl;
         $record->type = $model->type;
+        $record->label = $model->label;
         $record->notes = $model->notes;
         $record->enabled = $model->enabled;
 
@@ -98,6 +99,7 @@ class RedirectsService extends Component
             $model->fromUrl = $row['fromUrl'] ?? null;
             $model->toUrl = $row['toUrl'] ?? null;
             $model->type = !empty($row['type']) ? (int)$row['type'] : 301;
+            $model->label = $row['label'] ?? null;
             $model->notes = $row['notes'] ?? null;
 
             if ($this->saveRedirect($model)) {
@@ -125,6 +127,7 @@ class RedirectsService extends Component
         $model->fromUrl = $record->fromUrl;
         $model->toUrl = $record->toUrl;
         $model->type = $record->type;
+        $model->label = $record->label;
         $model->notes = $record->notes;
         $model->enabled = (bool)$record->enabled;
         $model->hitCount = (int)$record->hitCount;

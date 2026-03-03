@@ -10,6 +10,7 @@ class RedirectModel extends Model
     public ?string $fromUrl = null;
     public ?string $toUrl = null;
     public int $type = 301;
+    public ?string $label = null;
     public ?string $notes = null;
     public bool $enabled = true;
     public int $hitCount = 0;
@@ -34,6 +35,7 @@ class RedirectModel extends Model
             [['fromUrl', 'toUrl'], 'string', 'max' => 500],
             ['fromUrl', 'match', 'pattern' => '/^\//', 'message' => 'Must start with /'],
             ['type', 'in', 'range' => [301, 302, 307, 308]],
+            ['label', 'string', 'max' => 255],
             ['notes', 'safe'],
             ['enabled', 'boolean'],
             [['hitCount', 'lastHitAt'], 'safe'],
