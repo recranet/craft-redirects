@@ -72,13 +72,17 @@ class Redirects extends Plugin
                     return;
                 }
 
-                $path = $request->getPathInfo();
-                $redirect = $this->redirectsService->findRedirectByPath($path);
+                try {
+                    $path = $request->getPathInfo();
+                    $redirect = $this->redirectsService->findRedirectByPath($path);
 
-                if ($redirect) {
-                    $this->redirectsService->recordHit($redirect->id);
-                    Craft::$app->getResponse()->redirect($redirect->toUrl, $redirect->type);
-                    Craft::$app->end();
+                    if ($redirect) {
+                        $this->redirectsService->recordHit($redirect->id);
+                        Craft::$app->getResponse()->redirect($redirect->toUrl, $redirect->type);
+                        Craft::$app->end();
+                    }
+                } catch (\Throwable $e) {
+                    Craft::warning("Redirect interception failed: {$e->getMessage()}", __METHOD__);
                 }
             }
         );

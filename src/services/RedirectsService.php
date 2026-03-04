@@ -30,32 +30,47 @@ class RedirectsService extends Component
         $pathNoSlash = rtrim($path, '/');
         $pathWithSlash = $pathNoSlash . '/';
 
+        $hasMatchType = $this->hasColumn('matchType');
+
         // Try exact match first
-        $record = RedirectRecord::find()
+        $query = RedirectRecord::find()
             ->where(['lower([[fromUrl]])' => [strtolower($pathNoSlash), strtolower($pathWithSlash)]])
-            ->andWhere(['enabled' => true, 'matchType' => 'exact'])
-            ->one();
+            ->andWhere(['enabled' => true]);
+
+        if ($hasMatchType) {
+            $query->andWhere(['matchType' => 'exact']);
+        }
+
+        $record = $query->one();
 
         if ($record) {
             return $this->recordToModel($record);
         }
 
-        // Try regex matches
-        $regexRecords = RedirectRecord::find()
-            ->where(['enabled' => true, 'matchType' => 'regex'])
-            ->all();
+        // Try regex matches (only if matchType column exists)
+        if ($hasMatchType) {
+            $regexRecords = RedirectRecord::find()
+                ->where(['enabled' => true, 'matchType' => 'regex'])
+                ->all();
 
-        foreach ($regexRecords as $record) {
-            $pattern = '#' . $record->fromUrl . '#i';
-            if (@preg_match($pattern, $path, $matches)) {
-                $model = $this->recordToModel($record);
-                // Support $1, $2 etc. backreferences in toUrl
-                $model->toUrl = @preg_replace($pattern, $model->toUrl, $path);
-                return $model;
+            foreach ($regexRecords as $record) {
+                $pattern = '#' . $record->fromUrl . '#i';
+                if (@preg_match($pattern, $path, $matches)) {
+                    $model = $this->recordToModel($record);
+                    // Support $1, $2 etc. backreferences in toUrl
+                    $model->toUrl = @preg_replace($pattern, $model->toUrl, $path);
+                    return $model;
+                }
             }
         }
 
         return null;
+    }
+
+    private function hasColumn(string $column): bool
+    {
+        $schema = Craft::$app->getDb()->getTableSchema('{{%redirects}}');
+        return $schema && $schema->getColumn($column) !== null;
     }
 
     public function saveRedirect(RedirectModel $model): bool
