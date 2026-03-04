@@ -1,9 +1,11 @@
-{% import '_includes/forms.twig' as forms %}
+{% import "_includes/forms" as forms %}
 
 {{ forms.lightswitchField({
-    label: '404 Logging',
-    instructions: 'Log all 404 (not found) requests.',
-    id: 'logging404Enabled',
-    name: 'logging404Enabled',
-    on: settings.logging404Enabled,
+    first:        true,
+    label:        "404 Logging"|t('redirects'),
+    instructions: "Log all 404 (not found) requests."|t('redirects'),
+    id:           'logging404Enabled',
+    name:         'logging404Enabled',
+    on:           settings.logging404Enabled,
+    errors:       settings.getErrors('logging404Enabled'),
 }) }}
