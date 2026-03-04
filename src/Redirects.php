@@ -1,15 +1,15 @@
 <?php
 
-namespace custom\redirects;
+namespace recranet\redirects;
 
 use Craft;
 use craft\base\Plugin;
 use craft\events\RegisterUrlRulesEvent;
 use craft\web\Application;
 use craft\web\UrlManager;
-use custom\redirects\models\Settings;
-use custom\redirects\services\NotFoundService;
-use custom\redirects\services\RedirectsService;
+use recranet\redirects\models\Settings;
+use recranet\redirects\services\NotFoundService;
+use recranet\redirects\services\RedirectsService;
 use yii\base\Event;
 
 /**

@@ -1,12 +1,12 @@
 <?php
 
-namespace custom\redirects\controllers;
+namespace recranet\redirects\controllers;
 
 use Craft;
 use craft\web\Controller;
 use craft\web\UploadedFile;
-use custom\redirects\models\RedirectModel;
-use custom\redirects\Redirects;
+use recranet\redirects\models\RedirectModel;
+use recranet\redirects\Redirects;
 use yii\web\Response;
 
 class RedirectsController extends Controller

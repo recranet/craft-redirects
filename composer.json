@@ -1,5 +1,5 @@
 {
-	"name": "custom/craft-redirects",
+	"name": "recranet/craft-redirects",
 	"description": "Simple redirect management for Craft CMS",
 	"version": "1.0.0",
 	"type": "craft-plugin",
@@ -8,13 +8,13 @@
 	},
 	"autoload": {
 		"psr-4": {
-			"custom\\redirects\\": "src/"
+			"recranet\\redirects\\": "src/"
 		}
 	},
 	"extra": {
 		"handle": "redirects",
 		"name": "Redirects",
-		"developer": "Custom",
-		"class": "custom\\redirects\\Redirects"
+		"developer": "Recranet",
+		"class": "recranet\\redirects\\Redirects"
 	}
 }

@@ -1,11 +1,11 @@
 <?php
 
-namespace custom\redirects\services;
+namespace recranet\redirects\services;
 
 use Craft;
 use craft\base\Component;
-use custom\redirects\models\NotFoundModel;
-use custom\redirects\records\NotFoundRecord;
+use recranet\redirects\models\NotFoundModel;
+use recranet\redirects\records\NotFoundRecord;
 use yii\db\Expression;
 
 class NotFoundService extends Component

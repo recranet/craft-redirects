@@ -1,6 +1,6 @@
 <?php
 
-namespace custom\redirects\migrations;
+namespace recranet\redirects\migrations;
 
 use craft\db\Migration;
 

@@ -1,11 +1,11 @@
 <?php
 
-namespace custom\redirects\services;
+namespace recranet\redirects\services;
 
 use Craft;
 use craft\base\Component;
-use custom\redirects\models\RedirectModel;
-use custom\redirects\records\RedirectRecord;
+use recranet\redirects\models\RedirectModel;
+use recranet\redirects\records\RedirectRecord;
 use yii\db\Expression;
 
 class RedirectsService extends Component

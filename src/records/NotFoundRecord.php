@@ -1,6 +1,6 @@
 <?php
 
-namespace custom\redirects\records;
+namespace recranet\redirects\records;
 
 use craft\db\ActiveRecord;
 

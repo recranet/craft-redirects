@@ -1,6 +1,6 @@
 <?php
 
-namespace custom\redirects\models;
+namespace recranet\redirects\models;
 
 use craft\base\Model;
 
