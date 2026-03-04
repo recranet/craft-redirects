@@ -21,26 +21,40 @@
         on: redirect.enabled,
     }) }}
 
+    {{ forms.selectField({
+        label: 'Match Type',
+        instructions: '<strong>Exact match</strong>: matches the URL literally. <strong>Regex</strong>: use a regex pattern (without delimiters). Use <code>$1</code>, <code>$2</code> etc. in the To URL for captured groups.',
+        id: 'matchType',
+        name: 'matchType',
+        value: redirect.matchType,
+        options: matchTypeOptions,
+        errors: redirect.getErrors('matchType'),
+    }) }}
+
     {{ forms.textField({
         label: 'From URL',
-        instructions: 'The path to redirect from. Must start with <code>/</code>.',
+        instructions: redirect.matchType == 'regex'
+            ? 'Regex pattern without delimiters, e.g. <code>^/blog/(.*)$</code>'
+            : 'The path to redirect from. Must start with <code>/</code>.',
         id: 'fromUrl',
         name: 'fromUrl',
         value: redirect.fromUrl,
         required: true,
         errors: redirect.getErrors('fromUrl'),
-        placeholder: '/old-page',
+        placeholder: redirect.matchType == 'regex' ? '^/blog/(.*)$' : '/old-page',
     }) }}
 
     {{ forms.textField({
         label: 'To URL',
-        instructions: 'The destination URL. Can be a relative path or absolute URL.',
+        instructions: redirect.matchType == 'regex'
+            ? 'Destination URL. Use <code>$1</code>, <code>$2</code> for captured groups, e.g. <code>/articles/$1</code>'
+            : 'The destination URL. Can be a relative path or absolute URL.',
         id: 'toUrl',
         name: 'toUrl',
         value: redirect.toUrl,
         required: true,
         errors: redirect.getErrors('toUrl'),
-        placeholder: '/new-page or https://example.com',
+        placeholder: redirect.matchType == 'regex' ? '/articles/$1' : '/new-page or https://example.com',
     }) }}
 
     {{ forms.selectField({

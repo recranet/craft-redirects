@@ -4,9 +4,9 @@ namespace custom\redirects\services;
 
 use Craft;
 use craft\base\Component;
-use craft\db\Query;
 use custom\redirects\models\RedirectModel;
 use custom\redirects\records\RedirectRecord;
+use yii\db\Expression;
 
 class RedirectsService extends Component
 {
@@ -30,18 +30,38 @@ class RedirectsService extends Component
         $pathNoSlash = rtrim($path, '/');
         $pathWithSlash = $pathNoSlash . '/';
 
+        // Try exact match first
         $record = RedirectRecord::find()
             ->where(['lower([[fromUrl]])' => [strtolower($pathNoSlash), strtolower($pathWithSlash)]])
-            ->andWhere(['enabled' => true])
+            ->andWhere(['enabled' => true, 'matchType' => 'exact'])
             ->one();
 
-        return $record ? $this->recordToModel($record) : null;
+        if ($record) {
+            return $this->recordToModel($record);
+        }
+
+        // Try regex matches
+        $regexRecords = RedirectRecord::find()
+            ->where(['enabled' => true, 'matchType' => 'regex'])
+            ->all();
+
+        foreach ($regexRecords as $record) {
+            $pattern = '#' . $record->fromUrl . '#i';
+            if (@preg_match($pattern, $path, $matches)) {
+                $model = $this->recordToModel($record);
+                // Support $1, $2 etc. backreferences in toUrl
+                $model->toUrl = @preg_replace($pattern, $model->toUrl, $path);
+                return $model;
+            }
+        }
+
+        return null;
     }
 
     public function saveRedirect(RedirectModel $model): bool
     {
-        // Normalize: ensure leading slash
-        if ($model->fromUrl && !str_starts_with($model->fromUrl, '/')) {
+        // Normalize: ensure leading slash (only for exact matches)
+        if ($model->matchType === 'exact' && $model->fromUrl && !str_starts_with($model->fromUrl, '/')) {
             $model->fromUrl = '/' . $model->fromUrl;
         }
 
@@ -49,18 +69,29 @@ class RedirectsService extends Component
             return false;
         }
 
-        // Check for duplicate fromUrl
-        $normalizedFrom = strtolower(rtrim($model->fromUrl, '/'));
-        $duplicateQuery = RedirectRecord::find()
-            ->where(['lower(TRIM(TRAILING \'/\' FROM [[fromUrl]]))' => $normalizedFrom]);
-
-        if ($model->id) {
-            $duplicateQuery->andWhere(['not', ['id' => $model->id]]);
+        // Validate regex pattern
+        if ($model->matchType === 'regex' && $model->fromUrl) {
+            if (@preg_match('#' . $model->fromUrl . '#', '') === false) {
+                $model->addError('fromUrl', 'Invalid regex pattern.');
+                return false;
+            }
         }
 
-        if ($duplicateQuery->exists()) {
-            $model->addError('fromUrl', 'A redirect for this URL already exists.');
-            return false;
+        // Check for duplicate fromUrl (only for exact matches)
+        if ($model->matchType === 'exact') {
+            $normalizedFrom = strtolower(rtrim($model->fromUrl, '/'));
+            $duplicateQuery = RedirectRecord::find()
+                ->where(['lower(TRIM(TRAILING \'/\' FROM [[fromUrl]]))' => $normalizedFrom])
+                ->andWhere(['matchType' => 'exact']);
+
+            if ($model->id) {
+                $duplicateQuery->andWhere(['not', ['id' => $model->id]]);
+            }
+
+            if ($duplicateQuery->exists()) {
+                $model->addError('fromUrl', 'A redirect for this URL already exists.');
+                return false;
+            }
         }
 
         $record = $model->id ? RedirectRecord::findOne($model->id) : new RedirectRecord();
@@ -72,6 +103,7 @@ class RedirectsService extends Component
         $record->fromUrl = $model->fromUrl;
         $record->toUrl = $model->toUrl;
         $record->type = $model->type;
+        $record->matchType = $model->matchType;
         $record->label = $model->label;
         $record->notes = $model->notes;
         $record->enabled = $model->enabled;
@@ -103,10 +135,83 @@ class RedirectsService extends Component
     {
         Craft::$app->getDb()->createCommand()
             ->update('{{%redirects}}', [
-                'hitCount' => new \yii\db\Expression('[[hitCount]] + 1'),
+                'hitCount' => new Expression('[[hitCount]] + 1'),
                 'lastHitAt' => (new \DateTime())->format('Y-m-d H:i:s'),
             ], ['id' => $id], [], false)
             ->execute();
+    }
+
+    /**
+     * Detect redirect chains: does toUrl match any existing fromUrl?
+     */
+    public function detectChain(RedirectModel $model): ?string
+    {
+        if (!$model->toUrl) {
+            return null;
+        }
+
+        $toNormalized = strtolower(rtrim($model->toUrl, '/'));
+
+        $chainTarget = RedirectRecord::find()
+            ->where(['lower(TRIM(TRAILING \'/\' FROM [[fromUrl]]))' => $toNormalized])
+            ->andWhere(['matchType' => 'exact'])
+            ->one();
+
+        if ($chainTarget) {
+            return "Chain detected: {$model->toUrl} redirects further to {$chainTarget->toUrl}. Consider pointing directly to {$chainTarget->toUrl}.";
+        }
+
+        return null;
+    }
+
+    /**
+     * Bulk enable/disable redirects.
+     */
+    public function bulkSetEnabled(array $ids, bool $enabled): int
+    {
+        return Craft::$app->getDb()->createCommand()
+            ->update('{{%redirects}}', ['enabled' => $enabled], ['id' => $ids])
+            ->execute();
+    }
+
+    /**
+     * Bulk delete redirects.
+     */
+    public function bulkDelete(array $ids): int
+    {
+        return RedirectRecord::deleteAll(['id' => $ids]);
+    }
+
+    /**
+     * Export all redirects as CSV string.
+     */
+    public function exportCsv(): string
+    {
+        $redirects = $this->getAllRedirects();
+
+        $handle = fopen('php://temp', 'r+');
+        fputcsv($handle, ['from', 'to', 'type', 'matchType', 'label', 'notes', 'enabled', 'hits', 'lastHit', 'created']);
+
+        foreach ($redirects as $redirect) {
+            fputcsv($handle, [
+                $redirect->fromUrl,
+                $redirect->toUrl,
+                $redirect->type,
+                $redirect->matchType,
+                $redirect->label,
+                $redirect->notes,
+                $redirect->enabled ? 'yes' : 'no',
+                $redirect->hitCount,
+                $redirect->lastHitAt ?? '',
+                $redirect->dateCreated ?? '',
+            ]);
+        }
+
+        rewind($handle);
+        $csv = stream_get_contents($handle);
+        fclose($handle);
+
+        return $csv;
     }
 
     public function importRedirects(array $rows): array
@@ -119,6 +224,7 @@ class RedirectsService extends Component
             $model->fromUrl = $row['fromUrl'] ?? null;
             $model->toUrl = $row['toUrl'] ?? null;
             $model->type = !empty($row['type']) ? (int)$row['type'] : 301;
+            $model->matchType = $row['matchType'] ?? 'exact';
             $model->label = $row['label'] ?? null;
             $model->notes = $row['notes'] ?? null;
 
@@ -147,6 +253,7 @@ class RedirectsService extends Component
         $model->fromUrl = $record->fromUrl;
         $model->toUrl = $record->toUrl;
         $model->type = $record->type;
+        $model->matchType = $record->matchType ?? 'exact';
         $model->label = $record->label;
         $model->notes = $record->notes;
         $model->enabled = (bool)$record->enabled;

@@ -7,15 +7,17 @@ use craft\base\Plugin;
 use craft\events\RegisterUrlRulesEvent;
 use craft\web\Application;
 use craft\web\UrlManager;
+use custom\redirects\services\NotFoundService;
 use custom\redirects\services\RedirectsService;
 use yii\base\Event;
 
 /**
  * @property RedirectsService $redirectsService
+ * @property NotFoundService $notFoundService
  */
 class Redirects extends Plugin
 {
-    public string $schemaVersion = '1.3.0';
+    public string $schemaVersion = '1.4.0';
     public bool $hasCpSection = true;
 
     public static function config(): array
@@ -23,6 +25,7 @@ class Redirects extends Plugin
         return [
             'components' => [
                 'redirectsService' => RedirectsService::class,
+                'notFoundService' => NotFoundService::class,
             ],
         ];
     }
@@ -33,6 +36,7 @@ class Redirects extends Plugin
 
         $this->registerCpRoutes();
         $this->registerRedirectInterception();
+        $this->register404Logging();
     }
 
     private function registerCpRoutes(): void
@@ -43,6 +47,7 @@ class Redirects extends Plugin
             function (RegisterUrlRulesEvent $event) {
                 $event->rules['redirects'] = 'redirects/redirects/index';
                 $event->rules['redirects/import'] = 'redirects/redirects/import';
+                $event->rules['redirects/404s'] = 'redirects/redirects/404s';
                 $event->rules['redirects/new'] = 'redirects/redirects/edit';
                 $event->rules['redirects/<id:\d+>'] = 'redirects/redirects/edit';
             }
@@ -79,6 +84,32 @@ class Redirects extends Plugin
         );
     }
 
+    private function register404Logging(): void
+    {
+        Event::on(
+            \yii\web\Response::class,
+            \yii\web\Response::EVENT_BEFORE_SEND,
+            function ($event) {
+                $response = $event->sender;
+                $request = Craft::$app->getRequest();
+
+                if (
+                    $response->statusCode === 404 &&
+                    !$request->getIsConsoleRequest() &&
+                    !$request->getIsCpRequest() &&
+                    !$request->getIsActionRequest()
+                ) {
+                    try {
+                        $path = $request->getPathInfo();
+                        $this->notFoundService->logNotFound($path);
+                    } catch (\Throwable $e) {
+                        Craft::warning("Could not log 404: {$e->getMessage()}", __METHOD__);
+                    }
+                }
+            }
+        );
+    }
+
     public function getCpNavItem(): ?array
     {
         $item = parent::getCpNavItem();
@@ -86,6 +117,7 @@ class Redirects extends Plugin
         $item['subnav'] = [
             'redirects' => ['label' => 'Redirects', 'url' => 'redirects'],
             'import' => ['label' => 'Import', 'url' => 'redirects/import'],
+            '404s' => ['label' => '404 Log', 'url' => 'redirects/404s'],
         ];
 
         return $item;

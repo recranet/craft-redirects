@@ -30,11 +30,18 @@ class RedirectsController extends Controller
             }
         } else {
             $redirect = new RedirectModel();
+
+            // Pre-fill fromUrl from query param (e.g. from 404 log)
+            $fromUrl = Craft::$app->getRequest()->getQueryParam('fromUrl');
+            if ($fromUrl) {
+                $redirect->fromUrl = $fromUrl;
+            }
         }
 
         return $this->renderTemplate('redirects/_edit', [
             'redirect' => $redirect,
             'typeOptions' => RedirectModel::typeOptions(),
+            'matchTypeOptions' => RedirectModel::matchTypeOptions(),
         ]);
     }
 
@@ -49,22 +56,32 @@ class RedirectsController extends Controller
         $model->fromUrl = $request->getBodyParam('fromUrl');
         $model->toUrl = $request->getBodyParam('toUrl');
         $model->type = (int)$request->getBodyParam('type', 301);
+        $model->matchType = $request->getBodyParam('matchType', 'exact');
         $model->label = $request->getBodyParam('label');
         $model->notes = $request->getBodyParam('notes');
         $model->enabled = (bool)$request->getBodyParam('enabled', true);
 
-        if (!Redirects::getInstance()->redirectsService->saveRedirect($model)) {
+        $service = Redirects::getInstance()->redirectsService;
+
+        if (!$service->saveRedirect($model)) {
             Craft::$app->getSession()->setError('Could not save redirect.');
 
             Craft::$app->getUrlManager()->setRouteParams([
                 'redirect' => $model,
                 'typeOptions' => RedirectModel::typeOptions(),
+                'matchTypeOptions' => RedirectModel::matchTypeOptions(),
             ]);
 
             return null;
         }
 
-        Craft::$app->getSession()->setNotice('Redirect saved.');
+        // Chain detection warning
+        $chainWarning = $service->detectChain($model);
+        if ($chainWarning) {
+            Craft::$app->getSession()->setNotice("Redirect saved. Warning: $chainWarning");
+        } else {
+            Craft::$app->getSession()->setNotice('Redirect saved.');
+        }
 
         return $this->redirectToPostedUrl($model);
     }
@@ -99,6 +116,57 @@ class RedirectsController extends Controller
 
         return $this->asJson(['success' => true, 'enabled' => $redirect->enabled]);
     }
+
+    // --- Bulk actions ---
+
+    public function actionBulkEnable(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $ids = Craft::$app->getRequest()->getRequiredBodyParam('ids');
+        Redirects::getInstance()->redirectsService->bulkSetEnabled((array)$ids, true);
+
+        return $this->asJson(['success' => true]);
+    }
+
+    public function actionBulkDisable(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $ids = Craft::$app->getRequest()->getRequiredBodyParam('ids');
+        Redirects::getInstance()->redirectsService->bulkSetEnabled((array)$ids, false);
+
+        return $this->asJson(['success' => true]);
+    }
+
+    public function actionBulkDelete(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $ids = Craft::$app->getRequest()->getRequiredBodyParam('ids');
+        Redirects::getInstance()->redirectsService->bulkDelete((array)$ids);
+
+        return $this->asJson(['success' => true]);
+    }
+
+    // --- Export ---
+
+    public function actionExport(): Response
+    {
+        $csv = Redirects::getInstance()->redirectsService->exportCsv();
+
+        $response = Craft::$app->getResponse();
+        $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+        $response->headers->set('Content-Disposition', 'attachment; filename="redirects-export.csv"');
+        $response->content = $csv;
+
+        return $response;
+    }
+
+    // --- Import ---
 
     public function actionImport(): Response
     {
@@ -222,5 +290,37 @@ class RedirectsController extends Controller
             'total' => $results['total'],
             'errors' => $results['errors'],
         ]);
+    }
+
+    // --- 404 Log ---
+
+    public function action404s(): Response
+    {
+        $notFounds = Redirects::getInstance()->notFoundService->getAllNotFounds();
+
+        return $this->renderTemplate('redirects/_404s', [
+            'notFounds' => $notFounds,
+        ]);
+    }
+
+    public function actionDelete404(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $id = Craft::$app->getRequest()->getRequiredBodyParam('id');
+        Redirects::getInstance()->notFoundService->deleteNotFoundById((int)$id);
+
+        return $this->asJson(['success' => true]);
+    }
+
+    public function actionDeleteAll404s(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        Redirects::getInstance()->notFoundService->deleteAllNotFounds();
+
+        return $this->asJson(['success' => true]);
     }
 }

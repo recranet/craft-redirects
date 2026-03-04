@@ -1,0 +1,176 @@
+{% extends '_layouts/cp' %}
+
+{% set title = '404 Log' %}
+{% set selectedSubnavItem = '404s' %}
+{% set fullPageForm = false %}
+
+{% block actionButton %}
+    {% if notFounds|length %}
+        <button class="btn caution" id="clearAll404s">Clear all</button>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% if notFounds|length %}
+        <div style="margin-bottom: 16px;">
+            <input type="text" id="notFoundSearch" class="text fullwidth" placeholder="Search 404s..." style="max-width: 400px;">
+        </div>
+
+        <table class="data fullwidth sortable-table">
+            <thead>
+                <tr>
+                    <th class="sortable" data-sort="string" data-index="0">URL</th>
+                    <th class="sortable" data-sort="number" data-index="1">Hits</th>
+                    <th class="sortable" data-sort="string" data-index="2">Last Hit</th>
+                    <th class="sortable" data-sort="string" data-index="3">First Seen</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for nf in notFounds %}
+                    <tr data-id="{{ nf.id }}">
+                        <td>{{ nf.url }}</td>
+                        <td>{{ nf.hitCount }}</td>
+                        <td>{{ nf.lastHitAt }}</td>
+                        <td>{{ nf.dateCreated }}</td>
+                        <td class="thin" style="white-space: nowrap;">
+                            <a href="{{ cpUrl('redirects/new', { fromUrl: nf.url }) }}" class="btn small submit" title="Create redirect">Create redirect</a>
+                            <button class="btn small delete-404" data-id="{{ nf.id }}" title="Delete">Delete</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No 404s logged yet.</p>
+    {% endif %}
+
+    {% css %}
+        .sortable-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .sortable-table th.sortable:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        .sortable-table th.sortable::after {
+            content: '';
+            display: inline-block;
+            width: 0;
+            height: 0;
+            margin-left: 5px;
+            vertical-align: middle;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+        }
+        .sortable-table th.sortable.sort-asc::after {
+            border-bottom: 4px solid currentColor;
+            border-top: none;
+        }
+        .sortable-table th.sortable.sort-desc::after {
+            border-top: 4px solid currentColor;
+            border-bottom: none;
+        }
+        .btn.caution {
+            color: #dc2626;
+        }
+    {% endcss %}
+
+    {% js %}
+        // Search
+        (function() {
+            var input = document.getElementById('notFoundSearch');
+            if (!input) return;
+
+            input.addEventListener('input', function() {
+                var query = this.value.toLowerCase();
+                document.querySelectorAll('.sortable-table tbody tr').forEach(function(row) {
+                    var text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(query) ? '' : 'none';
+                });
+            });
+        })();
+
+        // Sortable table
+        (function() {
+            var table = document.querySelector('.sortable-table');
+            if (!table) return;
+
+            var headers = table.querySelectorAll('th.sortable');
+            var tbody = table.querySelector('tbody');
+            var currentSort = { index: null, dir: 'asc' };
+
+            headers.forEach(function(th) {
+                th.addEventListener('click', function() {
+                    var index = parseInt(th.dataset.index);
+                    var type = th.dataset.sort;
+
+                    if (currentSort.index === index) {
+                        currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        currentSort.index = index;
+                        currentSort.dir = 'asc';
+                    }
+
+                    headers.forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+                    th.classList.add('sort-' + currentSort.dir);
+
+                    var rows = Array.from(tbody.querySelectorAll('tr'));
+                    rows.sort(function(a, b) {
+                        var cellA = a.children[index];
+                        var cellB = b.children[index];
+                        var valA = cellA.textContent.trim().toLowerCase();
+                        var valB = cellB.textContent.trim().toLowerCase();
+
+                        if (type === 'number') {
+                            valA = parseFloat(valA) || 0;
+                            valB = parseFloat(valB) || 0;
+                        }
+
+                        var result = valA > valB ? 1 : valA < valB ? -1 : 0;
+                        return currentSort.dir === 'desc' ? -result : result;
+                    });
+
+                    rows.forEach(function(row) { tbody.appendChild(row); });
+                });
+            });
+        })();
+
+        // Delete single 404
+        document.querySelectorAll('.delete-404').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.dataset.id;
+                var row = this.closest('tr');
+
+                Craft.sendActionRequest('POST', 'redirects/redirects/delete-404', {
+                    data: { id: id }
+                }).then(function() {
+                    row.remove();
+                    Craft.cp.displayNotice('404 entry removed.');
+                }).catch(function() {
+                    Craft.cp.displayError('Could not delete 404 entry.');
+                });
+            });
+        });
+
+        // Clear all 404s
+        var clearBtn = document.getElementById('clearAll404s');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                if (!confirm('Are you sure you want to clear all 404 entries?')) {
+                    return;
+                }
+
+                Craft.sendActionRequest('POST', 'redirects/redirects/delete-all-404s', {})
+                    .then(function() {
+                        window.location.reload();
+                    }).catch(function() {
+                        Craft.cp.displayError('Could not clear 404 log.');
+                    });
+            });
+        }
+    {% endjs %}
+{% endblock %}

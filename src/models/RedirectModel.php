@@ -10,6 +10,7 @@ class RedirectModel extends Model
     public ?string $fromUrl = null;
     public ?string $toUrl = null;
     public int $type = 301;
+    public string $matchType = 'exact';
     public ?string $label = null;
     public ?string $notes = null;
     public bool $enabled = true;
@@ -19,6 +20,14 @@ class RedirectModel extends Model
     public ?string $createdByName = null;
     public ?string $dateCreated = null;
     public ?string $dateUpdated = null;
+
+    public static function matchTypeOptions(): array
+    {
+        return [
+            'exact' => 'Exact match',
+            'regex' => 'Regex pattern',
+        ];
+    }
 
     public static function typeOptions(): array
     {
@@ -37,6 +46,7 @@ class RedirectModel extends Model
             [['fromUrl', 'toUrl'], 'string', 'max' => 500],
             ['fromUrl', 'match', 'pattern' => '/^\//', 'message' => 'Must start with /'],
             ['type', 'in', 'range' => [301, 302, 307, 308]],
+            ['matchType', 'in', 'range' => ['exact', 'regex']],
             ['label', 'string', 'max' => 255],
             ['notes', 'safe'],
             ['enabled', 'boolean'],

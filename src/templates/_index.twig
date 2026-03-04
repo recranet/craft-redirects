@@ -5,30 +5,47 @@
 {% set fullPageForm = false %}
 
 {% block actionButton %}
+    <a href="{{ actionUrl('redirects/redirects/export') }}" class="btn">Export CSV</a>
     <a href="{{ cpUrl('redirects/new') }}" class="btn submit">New redirect</a>
 {% endblock %}
 
 {% block content %}
     {% if redirects|length %}
+        {# Search bar #}
+        <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+            <input type="text" id="redirectSearch" class="text fullwidth" placeholder="Search redirects..." style="max-width: 400px;">
+        </div>
+
+        {# Bulk action bar (hidden by default) #}
+        <div id="bulkActions" style="display: none; margin-bottom: 16px; padding: 10px 14px; background: #f1f5f9; border-radius: 6px; align-items: center; gap: 10px;">
+            <span id="bulkCount">0</span> selected —
+            <button class="btn small" id="bulkEnableBtn">Enable</button>
+            <button class="btn small" id="bulkDisableBtn">Disable</button>
+            <button class="btn small caution" id="bulkDeleteBtn">Delete</button>
+        </div>
+
         <table class="data fullwidth sortable-table">
             <thead>
                 <tr>
-                    <th class="sortable" data-sort="string" data-index="0">Enabled</th>
-                    <th class="sortable" data-sort="string" data-index="1">From</th>
-                    <th class="sortable" data-sort="string" data-index="2">To</th>
-                    <th class="sortable" data-sort="number" data-index="3">Type</th>
-                    <th class="sortable" data-sort="string" data-index="4">Label</th>
-                    <th class="sortable" data-sort="number" data-index="5">Hits</th>
-                    <th class="sortable" data-sort="string" data-index="6">Last Hit</th>
-                    <th class="sortable" data-sort="string" data-index="7">Notes</th>
-                    <th class="sortable" data-sort="string" data-index="8">Created</th>
-                    <th class="sortable" data-sort="string" data-index="9">Created by</th>
+                    <th style="width: 30px;"><input type="checkbox" id="selectAll"></th>
+                    <th class="sortable" data-sort="string" data-index="1">Enabled</th>
+                    <th class="sortable" data-sort="string" data-index="2">From</th>
+                    <th class="sortable" data-sort="string" data-index="3">To</th>
+                    <th class="sortable" data-sort="number" data-index="4">Type</th>
+                    <th class="sortable" data-sort="string" data-index="5">Match</th>
+                    <th class="sortable" data-sort="string" data-index="6">Label</th>
+                    <th class="sortable" data-sort="number" data-index="7">Hits</th>
+                    <th class="sortable" data-sort="string" data-index="8">Last Hit</th>
+                    <th class="sortable" data-sort="string" data-index="9">Notes</th>
+                    <th class="sortable" data-sort="string" data-index="10">Created</th>
+                    <th class="sortable" data-sort="string" data-index="11">Created by</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 {% for redirect in redirects %}
                     <tr data-id="{{ redirect.id }}">
+                        <td><input type="checkbox" class="row-select" value="{{ redirect.id }}"></td>
                         <td data-value="{{ redirect.enabled ? '1' : '0' }}">
                             <button class="toggle-enabled btn small {% if redirect.enabled %}submit{% endif %}"
                                     data-id="{{ redirect.id }}"
@@ -39,6 +56,7 @@
                         <td><a href="{{ cpUrl('redirects/' ~ redirect.id) }}">{{ redirect.fromUrl }}</a></td>
                         <td>{{ redirect.toUrl }}</td>
                         <td>{{ redirect.type }}</td>
+                        <td>{{ redirect.matchType }}</td>
                         <td>{{ redirect.label ?? '' }}</td>
                         <td>{{ redirect.hitCount }}</td>
                         <td>{{ redirect.lastHitAt ?? '—' }}</td>
@@ -86,10 +104,86 @@
             border-top: 4px solid currentColor;
             border-bottom: none;
         }
+        .btn.caution {
+            color: #dc2626;
+        }
     {% endcss %}
 
     {% js %}
-        // Sortable table
+        // --- Search / filter ---
+        (function() {
+            var input = document.getElementById('redirectSearch');
+            if (!input) return;
+
+            input.addEventListener('input', function() {
+                var query = this.value.toLowerCase();
+                document.querySelectorAll('.sortable-table tbody tr').forEach(function(row) {
+                    var text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(query) ? '' : 'none';
+                });
+            });
+        })();
+
+        // --- Select all / bulk actions ---
+        (function() {
+            var selectAll = document.getElementById('selectAll');
+            var bulkBar = document.getElementById('bulkActions');
+            var bulkCount = document.getElementById('bulkCount');
+            if (!selectAll || !bulkBar) return;
+
+            function getChecked() {
+                return Array.from(document.querySelectorAll('.row-select:checked')).map(function(cb) {
+                    return cb.value;
+                });
+            }
+
+            function updateBulkBar() {
+                var ids = getChecked();
+                bulkCount.textContent = ids.length;
+                bulkBar.style.display = ids.length > 0 ? 'flex' : 'none';
+            }
+
+            selectAll.addEventListener('change', function() {
+                document.querySelectorAll('.row-select').forEach(function(cb) {
+                    var row = cb.closest('tr');
+                    if (row.style.display !== 'none') {
+                        cb.checked = selectAll.checked;
+                    }
+                });
+                updateBulkBar();
+            });
+
+            document.querySelectorAll('.row-select').forEach(function(cb) {
+                cb.addEventListener('change', updateBulkBar);
+            });
+
+            function bulkAction(action) {
+                var ids = getChecked();
+                if (!ids.length) return;
+
+                Craft.sendActionRequest('POST', 'redirects/redirects/' + action, {
+                    data: { ids: ids }
+                }).then(function() {
+                    window.location.reload();
+                }).catch(function() {
+                    Craft.cp.displayError('Bulk action failed.');
+                });
+            }
+
+            document.getElementById('bulkEnableBtn').addEventListener('click', function() {
+                bulkAction('bulk-enable');
+            });
+            document.getElementById('bulkDisableBtn').addEventListener('click', function() {
+                bulkAction('bulk-disable');
+            });
+            document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
+                if (confirm('Are you sure you want to delete ' + getChecked().length + ' redirects?')) {
+                    bulkAction('bulk-delete');
+                }
+            });
+        })();
+
+        // --- Sortable table ---
         (function() {
             var table = document.querySelector('.sortable-table');
             if (!table) return;
@@ -134,7 +228,7 @@
             });
         })();
 
-        // Delete
+        // --- Delete ---
         document.querySelectorAll('.delete-redirect').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 if (!confirm('Are you sure you want to delete this redirect?')) {
@@ -155,7 +249,7 @@
             });
         });
 
-        // Toggle
+        // --- Toggle ---
         document.querySelectorAll('.toggle-enabled').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var button = this;
