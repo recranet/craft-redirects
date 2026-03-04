@@ -49,6 +49,20 @@ class RedirectsService extends Component
             return false;
         }
 
+        // Check for duplicate fromUrl
+        $normalizedFrom = strtolower(rtrim($model->fromUrl, '/'));
+        $duplicateQuery = RedirectRecord::find()
+            ->where(['lower(TRIM(TRAILING \'/\' FROM [[fromUrl]]))' => $normalizedFrom]);
+
+        if ($model->id) {
+            $duplicateQuery->andWhere(['not', ['id' => $model->id]]);
+        }
+
+        if ($duplicateQuery->exists()) {
+            $model->addError('fromUrl', 'A redirect for this URL already exists.');
+            return false;
+        }
+
         $record = $model->id ? RedirectRecord::findOne($model->id) : new RedirectRecord();
 
         if (!$record) {
