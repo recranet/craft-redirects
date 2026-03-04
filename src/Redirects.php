@@ -7,6 +7,7 @@ use craft\base\Plugin;
 use craft\events\RegisterUrlRulesEvent;
 use craft\web\Application;
 use craft\web\UrlManager;
+use custom\redirects\models\Settings;
 use custom\redirects\services\NotFoundService;
 use custom\redirects\services\RedirectsService;
 use yii\base\Event;
@@ -19,6 +20,7 @@ class Redirects extends Plugin
 {
     public string $schemaVersion = '1.4.0';
     public bool $hasCpSection = true;
+    public bool $hasCpSettings = true;
 
     public static function config(): array
     {
@@ -90,6 +92,10 @@ class Redirects extends Plugin
 
     private function register404Logging(): void
     {
+        if (!$this->getSettings()->logging404Enabled) {
+            return;
+        }
+
         Event::on(
             \yii\web\Response::class,
             \yii\web\Response::EVENT_BEFORE_SEND,
@@ -112,6 +118,18 @@ class Redirects extends Plugin
                 }
             }
         );
+    }
+
+    protected function createSettingsModel(): ?Settings
+    {
+        return new Settings();
+    }
+
+    protected function settingsHtml(): ?string
+    {
+        return Craft::$app->getView()->renderTemplate('redirects/_settings', [
+            'settings' => $this->getSettings(),
+        ]);
     }
 
     public function getCpNavItem(): ?array
