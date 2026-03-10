@@ -21,7 +21,7 @@
         </div>
 
         <div class="btngroup">
-            <button type="submit" id="uploadBtn" class="btn submit" disabled>Upload & Preview</button>
+            <button type="submit" id="uploadBtn" class="btn" disabled>Upload & Preview</button>
         </div>
     </form>
 
@@ -73,7 +73,9 @@
             if (!fileInput || !uploadBtn) return;
 
             fileInput.addEventListener('change', function() {
-                uploadBtn.disabled = !this.files.length;
+                var hasFile = !!this.files.length;
+                uploadBtn.disabled = !hasFile;
+                uploadBtn.classList.toggle('submit', hasFile);
             });
         })();
     {% endjs %}
