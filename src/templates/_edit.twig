@@ -1,7 +1,7 @@
 {% extends '_layouts/cp' %}
 {% import '_includes/forms' as forms %}
 
-{% set title = redirect.id ? 'Edit redirect' : 'New redirect' %}
+{% set title = redirect.id ? 'Edit redirect'|t('redirects') : 'New redirect'|t('redirects') %}
 {% set selectedSubnavItem = 'redirects' %}
 {% set fullPageForm = true %}
 
@@ -14,16 +14,16 @@
     {% endif %}
 
     {{ forms.lightswitchField({
-        label: 'Enabled',
-        instructions: 'Whether this redirect is active.',
+        label: 'Enabled'|t('redirects'),
+        instructions: 'Whether this redirect is active.'|t('redirects'),
         id: 'enabled',
         name: 'enabled',
         on: redirect.enabled,
     }) }}
 
     {{ forms.selectField({
-        label: 'Match Type',
-        instructions: '<strong>Exact match</strong>: matches the URL literally. <strong>Regex</strong>: use a regex pattern (without delimiters). Use <code>$1</code>, <code>$2</code> etc. in the To URL for captured groups.',
+        label: 'Match Type'|t('redirects'),
+        instructions: '<strong>Exact match</strong>: matches the URL literally. <strong>Regex</strong>: use a regex pattern (without delimiters). Use <code>$1</code>, <code>$2</code> etc. in the To URL for captured groups.'|t('redirects'),
         id: 'matchType',
         name: 'matchType',
         value: redirect.matchType,
@@ -32,10 +32,10 @@
     }) }}
 
     {{ forms.textField({
-        label: 'From URL',
+        label: 'From URL'|t('redirects'),
         instructions: redirect.matchType == 'regex'
-            ? 'Regex pattern without delimiters, e.g. <code>^/blog/(.*)$</code>'
-            : 'The path to redirect from. Must start with <code>/</code>.',
+            ? 'Regex pattern without delimiters, e.g. <code>^/blog/(.*)$</code>'|t('redirects')
+            : 'The path to redirect from. Must start with <code>/</code>.'|t('redirects'),
         id: 'fromUrl',
         name: 'fromUrl',
         value: redirect.fromUrl,
@@ -45,10 +45,10 @@
     }) }}
 
     {{ forms.textField({
-        label: 'To URL',
+        label: 'To URL'|t('redirects'),
         instructions: redirect.matchType == 'regex'
-            ? 'Destination URL. Use <code>$1</code>, <code>$2</code> for captured groups, e.g. <code>/articles/$1</code>'
-            : 'The destination URL. Can be a relative path or absolute URL.',
+            ? 'Destination URL. Use <code>$1</code>, <code>$2</code> for captured groups, e.g. <code>/articles/$1</code>'|t('redirects')
+            : 'The destination URL. Can be a relative path or absolute URL.'|t('redirects'),
         id: 'toUrl',
         name: 'toUrl',
         value: redirect.toUrl,
@@ -58,8 +58,8 @@
     }) }}
 
     {{ forms.selectField({
-        label: 'Type',
-        instructions: 'The HTTP status code for the redirect. <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#redirection_messages" target="_blank" rel="noopener">Learn more on MDN</a>.',
+        label: 'Type'|t('redirects'),
+        instructions: 'The HTTP status code for the redirect. <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#redirection_messages" target="_blank" rel="noopener">Learn more on MDN</a>.'|t('redirects'),
         id: 'type',
         name: 'type',
         value: redirect.type,
@@ -68,8 +68,8 @@
     }) }}
 
     {{ forms.textField({
-        label: 'Label',
-        instructions: 'Optional label to categorize this redirect, e.g. "Livegang", "Redesign".',
+        label: 'Label'|t('redirects'),
+        instructions: 'Optional label to categorize this redirect, e.g. "Livegang", "Redesign".'|t('redirects'),
         id: 'label',
         name: 'label',
         value: redirect.label,
@@ -78,8 +78,8 @@
     }) }}
 
     {{ forms.textareaField({
-        label: 'Notes',
-        instructions: 'Optional notes about this redirect.',
+        label: 'Notes'|t('redirects'),
+        instructions: 'Optional notes about this redirect.'|t('redirects'),
         id: 'notes',
         name: 'notes',
         value: redirect.notes,

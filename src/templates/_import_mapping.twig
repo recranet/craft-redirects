@@ -1,6 +1,6 @@
 {% extends '_layouts/cp' %}
 
-{% set title = 'Map CSV Columns' %}
+{% set title = 'Map CSV Columns'|t('redirects') %}
 {% set selectedSubnavItem = 'import' %}
 
 {% block content %}
@@ -9,7 +9,7 @@
         {{ actionInput('redirects/redirects/process-import') }}
         {{ hiddenInput('tempFilename', tempFilename) }}
 
-        <p>Map each CSV column to a redirect field. Columns mapped to <strong>Skip</strong> will be ignored.</p>
+        <p>{{ 'Map each CSV column to a redirect field. Columns mapped to <strong>Skip</strong> will be ignored.'|t('redirects') }}</p>
 
         <table class="data fullwidth" style="margin-top: 16px;">
             <thead>
@@ -19,13 +19,13 @@
                             {{ header }}
                             <div style="margin-top: 6px;">
                                 <select name="mapping[{{ loop.index0 }}]">
-                                    <option value="skip">Skip</option>
-                                    <option value="fromUrl" {% if header|lower in ['from', 'from url', 'fromurl', 'source', 'old url', 'old'] %}selected{% endif %}>From URL</option>
-                                    <option value="toUrl" {% if header|lower in ['to', 'to url', 'tourl', 'destination', 'new url', 'new', 'target'] %}selected{% endif %}>To URL</option>
-                                    <option value="type" {% if header|lower in ['type', 'status', 'code', 'status code', 'http status'] %}selected{% endif %}>Type</option>
-                                    <option value="matchType" {% if header|lower in ['match', 'match type', 'matchtype', 'pattern'] %}selected{% endif %}>Match Type</option>
-                                    <option value="label" {% if header|lower in ['label', 'tag', 'category', 'categorie', 'reden', 'reason'] %}selected{% endif %}>Label</option>
-                                    <option value="notes" {% if header|lower in ['notes', 'note', 'comment', 'comments', 'description'] %}selected{% endif %}>Notes</option>
+                                    <option value="skip">{{ 'Skip'|t('redirects') }}</option>
+                                    <option value="fromUrl" {% if header|lower in ['from', 'from url', 'fromurl', 'source', 'old url', 'old'] %}selected{% endif %}>{{ 'From URL'|t('redirects') }}</option>
+                                    <option value="toUrl" {% if header|lower in ['to', 'to url', 'tourl', 'destination', 'new url', 'new', 'target'] %}selected{% endif %}>{{ 'To URL'|t('redirects') }}</option>
+                                    <option value="type" {% if header|lower in ['type', 'status', 'code', 'status code', 'http status'] %}selected{% endif %}>{{ 'Type'|t('redirects') }}</option>
+                                    <option value="matchType" {% if header|lower in ['match', 'match type', 'matchtype', 'pattern'] %}selected{% endif %}>{{ 'Match Type'|t('redirects') }}</option>
+                                    <option value="label" {% if header|lower in ['label', 'tag', 'category', 'categorie', 'reden', 'reason'] %}selected{% endif %}>{{ 'Label'|t('redirects') }}</option>
+                                    <option value="notes" {% if header|lower in ['notes', 'note', 'comment', 'comments', 'description'] %}selected{% endif %}>{{ 'Notes'|t('redirects') }}</option>
                                 </select>
                             </div>
                         </th>
@@ -44,8 +44,8 @@
         </table>
 
         <div class="btngroup" style="margin-top: 16px;">
-            <button type="submit" class="btn submit">Import</button>
-            <a href="{{ cpUrl('redirects/import') }}" class="btn">Cancel</a>
+            <button type="submit" class="btn submit">{{ 'Import'|t('redirects') }}</button>
+            <a href="{{ cpUrl('redirects/import') }}" class="btn">{{ 'Cancel'|t('redirects') }}</a>
         </div>
     </form>
 {% endblock %}

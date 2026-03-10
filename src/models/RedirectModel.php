@@ -2,6 +2,7 @@
 
 namespace recranet\redirects\models;
 
+use Craft;
 use craft\base\Model;
 
 class RedirectModel extends Model
@@ -24,18 +25,18 @@ class RedirectModel extends Model
     public static function matchTypeOptions(): array
     {
         return [
-            'exact' => 'Exact match',
-            'regex' => 'Regex pattern',
+            'exact' => Craft::t('redirects', 'Exact match'),
+            'regex' => Craft::t('redirects', 'Regex pattern'),
         ];
     }
 
     public static function typeOptions(): array
     {
         return [
-            302 => '302 — Temporary (browser does not cache)',
-            301 => '301 — Permanent (browser caches redirect)',
-            307 => '307 — Temporary (preserve method, browser does not cache)',
-            308 => '308 — Permanent (preserve method, browser caches redirect)',
+            302 => Craft::t('redirects', '302 — Temporary (browser does not cache)'),
+            301 => Craft::t('redirects', '301 — Permanent (browser caches redirect)'),
+            307 => Craft::t('redirects', '307 — Temporary (preserve method, browser does not cache)'),
+            308 => Craft::t('redirects', '308 — Permanent (preserve method, browser caches redirect)'),
         ];
     }
 

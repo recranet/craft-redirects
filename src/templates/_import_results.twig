@@ -1,21 +1,21 @@
 {% extends '_layouts/cp' %}
 
-{% set title = 'Import Results' %}
+{% set title = 'Import Results'|t('redirects') %}
 {% set selectedSubnavItem = 'import' %}
 
 {% block content %}
     <div class="field">
-        <p><strong>{{ imported }}</strong> of <strong>{{ total }}</strong> redirects imported successfully.</p>
+        <p>{{ '{imported} of {total} redirects imported successfully.'|t('redirects', { imported: '<strong>' ~ imported ~ '</strong>', total: '<strong>' ~ total ~ '</strong>' })|raw }}</p>
     </div>
 
     {% if errors|length %}
-        <h2>Errors</h2>
+        <h2>{{ 'Errors'|t('redirects') }}</h2>
         <table class="data fullwidth" style="margin-top: 8px;">
             <thead>
                 <tr>
-                    <th>Row</th>
-                    <th>Data</th>
-                    <th>Errors</th>
+                    <th>{{ 'Row'|t('redirects') }}</th>
+                    <th>{{ 'Data'|t('redirects') }}</th>
+                    <th>{{ 'Errors'|t('redirects') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -41,7 +41,7 @@
     {% endif %}
 
     <div class="btngroup" style="margin-top: 16px;">
-        <a href="{{ cpUrl('redirects/import') }}" class="btn submit">Import more</a>
-        <a href="{{ cpUrl('redirects') }}" class="btn">View redirects</a>
+        <a href="{{ cpUrl('redirects/import') }}" class="btn submit">{{ 'Import more'|t('redirects') }}</a>
+        <a href="{{ cpUrl('redirects') }}" class="btn">{{ 'View redirects'|t('redirects') }}</a>
     </div>
 {% endblock %}

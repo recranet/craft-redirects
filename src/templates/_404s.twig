@@ -1,28 +1,28 @@
 {% extends '_layouts/cp' %}
 
-{% set title = '404 Log' %}
+{% set title = '404 Log'|t('redirects') %}
 {% set selectedSubnavItem = '404s' %}
 {% set fullPageForm = false %}
 
 {% block actionButton %}
     {% if notFounds|length %}
-        <button class="btn caution" id="clearAll404s">Clear all</button>
+        <button class="btn caution" id="clearAll404s">{{ 'Clear all'|t('redirects') }}</button>
     {% endif %}
 {% endblock %}
 
 {% block content %}
     {% if notFounds|length %}
         <div style="margin-bottom: 16px;">
-            <input type="text" id="notFoundSearch" class="text fullwidth" placeholder="Search 404s..." style="max-width: 400px;">
+            <input type="text" id="notFoundSearch" class="text fullwidth" placeholder="{{ 'Search 404s...'|t('redirects') }}" style="max-width: 400px;">
         </div>
 
         <table class="data fullwidth sortable-table">
             <thead>
                 <tr>
-                    <th class="sortable" data-sort="string" data-index="0">URL</th>
-                    <th class="sortable" data-sort="number" data-index="1">Hits</th>
-                    <th class="sortable" data-sort="string" data-index="2">Last Hit</th>
-                    <th class="sortable" data-sort="string" data-index="3">First Seen</th>
+                    <th class="sortable" data-sort="string" data-index="0">{{ 'URL'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="number" data-index="1">{{ 'Hits'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="string" data-index="2">{{ 'Last Hit'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="string" data-index="3">{{ 'First Seen'|t('redirects') }}</th>
                     <th></th>
                 </tr>
             </thead>
@@ -34,15 +34,15 @@
                         <td>{{ nf.lastHitAt }}</td>
                         <td>{{ nf.dateCreated }}</td>
                         <td class="thin" style="white-space: nowrap;">
-                            <a href="{{ cpUrl('redirects/new', { fromUrl: nf.url }) }}" class="btn small submit" title="Create redirect">Create redirect</a>
-                            <button class="btn small delete-404" data-id="{{ nf.id }}" title="Delete">Delete</button>
+                            <a href="{{ cpUrl('redirects/new', { fromUrl: nf.url }) }}" class="btn small submit" title="{{ 'Create redirect'|t('redirects') }}">{{ 'Create redirect'|t('redirects') }}</a>
+                            <button class="btn small delete-404" data-id="{{ nf.id }}" title="{{ 'Delete'|t('redirects') }}">{{ 'Delete'|t('redirects') }}</button>
                         </td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
     {% else %}
-        <p>No 404s logged yet.</p>
+        <p>{{ 'No 404s logged yet.'|t('redirects') }}</p>
     {% endif %}
 
     {% css %}
@@ -149,9 +149,9 @@
                     data: { id: id }
                 }).then(function() {
                     row.remove();
-                    Craft.cp.displayNotice('404 entry removed.');
+                    Craft.cp.displayNotice('{{ '404 entry removed.'|t('redirects')|e('js') }}');
                 }).catch(function() {
-                    Craft.cp.displayError('Could not delete 404 entry.');
+                    Craft.cp.displayError('{{ 'Could not delete 404 entry.'|t('redirects')|e('js') }}');
                 });
             });
         });
@@ -160,7 +160,7 @@
         var clearBtn = document.getElementById('clearAll404s');
         if (clearBtn) {
             clearBtn.addEventListener('click', function() {
-                if (!confirm('Are you sure you want to clear all 404 entries?')) {
+                if (!confirm('{{ 'Are you sure you want to clear all 404 entries?'|t('redirects')|e('js') }}')) {
                     return;
                 }
 
@@ -168,7 +168,7 @@
                     .then(function() {
                         window.location.reload();
                     }).catch(function() {
-                        Craft.cp.displayError('Could not clear 404 log.');
+                        Craft.cp.displayError('{{ 'Could not clear 404 log.'|t('redirects')|e('js') }}');
                     });
             });
         }

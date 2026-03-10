@@ -64,7 +64,7 @@ class RedirectsController extends Controller
         $service = Redirects::getInstance()->redirectsService;
 
         if (!$service->saveRedirect($model)) {
-            Craft::$app->getSession()->setError('Could not save redirect.');
+            Craft::$app->getSession()->setError(Craft::t('redirects', 'Could not save redirect.'));
 
             Craft::$app->getUrlManager()->setRouteParams([
                 'redirect' => $model,
@@ -78,9 +78,9 @@ class RedirectsController extends Controller
         // Chain detection warning
         $chainWarning = $service->detectChain($model);
         if ($chainWarning) {
-            Craft::$app->getSession()->setNotice("Redirect saved. Warning: $chainWarning");
+            Craft::$app->getSession()->setNotice(Craft::t('redirects', 'Redirect saved.') . ' ' . Craft::t('redirects', 'Warning:') . " $chainWarning");
         } else {
-            Craft::$app->getSession()->setNotice('Redirect saved.');
+            Craft::$app->getSession()->setNotice(Craft::t('redirects', 'Redirect saved.'));
         }
 
         return $this->redirectToPostedUrl($model);
@@ -152,6 +152,20 @@ class RedirectsController extends Controller
         return $this->asJson(['success' => true]);
     }
 
+    public function actionBulkChangeType(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $request = Craft::$app->getRequest();
+        $ids = $request->getRequiredBodyParam('ids');
+        $type = (int)$request->getRequiredBodyParam('type');
+
+        Redirects::getInstance()->redirectsService->bulkSetType((array)$ids, $type);
+
+        return $this->asJson(['success' => true]);
+    }
+
     // --- Export ---
 
     public function actionExport(): Response
@@ -195,25 +209,25 @@ class RedirectsController extends Controller
         $file = UploadedFile::getInstanceByName('csvFile');
 
         if (!$file) {
-            Craft::$app->getSession()->setError('No file uploaded.');
+            Craft::$app->getSession()->setError(Craft::t('redirects', 'No file uploaded.'));
             return $this->renderTemplate('redirects/_import');
         }
 
         if (!in_array($file->getExtension(), ['csv', 'txt'])) {
-            Craft::$app->getSession()->setError('Please upload a CSV file.');
+            Craft::$app->getSession()->setError(Craft::t('redirects', 'Please upload a CSV file.'));
             return $this->renderTemplate('redirects/_import');
         }
 
         $handle = fopen($file->tempName, 'r');
         if (!$handle) {
-            Craft::$app->getSession()->setError('Could not read file.');
+            Craft::$app->getSession()->setError(Craft::t('redirects', 'Could not read file.'));
             return $this->renderTemplate('redirects/_import');
         }
 
         $headers = fgetcsv($handle, 0, ',', '"');
         if (!$headers) {
             fclose($handle);
-            Craft::$app->getSession()->setError('CSV file is empty or invalid.');
+            Craft::$app->getSession()->setError(Craft::t('redirects', 'CSV file is empty or invalid.'));
             return $this->renderTemplate('redirects/_import');
         }
 
@@ -250,14 +264,14 @@ class RedirectsController extends Controller
 
         // Validate temp filename to prevent directory traversal
         if (preg_match('/[\/\\\\]/', $tempFilename)) {
-            Craft::$app->getSession()->setError('Invalid file reference.');
+            Craft::$app->getSession()->setError(Craft::t('redirects', 'Invalid file reference.'));
             return $this->renderTemplate('redirects/_import');
         }
 
         $tempPath = Craft::$app->getPath()->getTempPath() . DIRECTORY_SEPARATOR . $tempFilename;
 
         if (!file_exists($tempPath)) {
-            Craft::$app->getSession()->setError('Temporary file not found. Please re-upload.');
+            Craft::$app->getSession()->setError(Craft::t('redirects', 'Temporary file not found. Please re-upload.'));
             return $this->renderTemplate('redirects/_import');
         }
 

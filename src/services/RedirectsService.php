@@ -190,6 +190,16 @@ class RedirectsService extends Component
     }
 
     /**
+     * Bulk change redirect type.
+     */
+    public function bulkSetType(array $ids, int $type): int
+    {
+        return Craft::$app->getDb()->createCommand()
+            ->update('{{%redirects}}', ['type' => $type], ['id' => $ids])
+            ->execute();
+    }
+
+    /**
      * Bulk delete redirects.
      */
     public function bulkDelete(array $ids): int

@@ -135,11 +135,11 @@ class Redirects extends Plugin
     public function getCpNavItem(): ?array
     {
         $item = parent::getCpNavItem();
-        $item['label'] = 'Redirects';
+        $item['label'] = Craft::t('redirects', 'Redirects');
         $item['subnav'] = [
-            'redirects' => ['label' => 'Redirects', 'url' => 'redirects'],
-            'import' => ['label' => 'Import', 'url' => 'redirects/import'],
-            '404s' => ['label' => '404 Log', 'url' => 'redirects/404s'],
+            'redirects' => ['label' => Craft::t('redirects', 'Redirects'), 'url' => 'redirects'],
+            'import' => ['label' => Craft::t('redirects', 'Import'), 'url' => 'redirects/import'],
+            '404s' => ['label' => Craft::t('redirects', '404 Log'), 'url' => 'redirects/404s'],
         ];
 
         return $item;
