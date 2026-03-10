@@ -47,7 +47,7 @@
                     <tr data-id="{{ redirect.id }}">
                         <td><input type="checkbox" class="row-select" value="{{ redirect.id }}"></td>
                         <td data-value="{{ redirect.enabled ? '1' : '0' }}">
-                            <button class="toggle-enabled btn small {% if redirect.enabled %}submit{% endif %}"
+                            <button class="toggle-enabled btn small {% if redirect.enabled %}toggle-on{% endif %}"
                                     data-id="{{ redirect.id }}"
                                     title="Toggle enabled">
                                 {{ redirect.enabled ? 'On' : 'Off' }}
@@ -107,14 +107,14 @@
         .btn.caution {
             color: #dc2626;
         }
-        button.btn.toggle-enabled.submit {
-            background-color: #16a34a !important;
-            color: #fff !important;
-            border-color: #16a34a !important;
+        .toggle-enabled.toggle-on {
+            background-color: #16a34a;
+            color: #fff;
+            border-color: #16a34a;
         }
-        button.btn.toggle-enabled.submit:hover {
-            background-color: #15803d !important;
-            border-color: #15803d !important;
+        .toggle-enabled.toggle-on:hover {
+            background-color: #15803d;
+            border-color: #15803d;
         }
     {% endcss %}
 
@@ -272,9 +272,9 @@
                     var cell = button.closest('td');
                     cell.dataset.value = enabled ? '1' : '0';
                     if (enabled) {
-                        button.classList.add('submit');
+                        button.classList.add('toggle-on');
                     } else {
-                        button.classList.remove('submit');
+                        button.classList.remove('toggle-on');
                     }
                     Craft.cp.displayNotice('Redirect ' + (enabled ? 'enabled' : 'disabled') + '.');
                 }).catch(function() {
