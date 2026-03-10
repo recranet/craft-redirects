@@ -21,14 +21,15 @@
         </div>
 
         <div class="btngroup">
-            <button type="submit" class="btn submit">Upload & Preview</button>
+            <button type="submit" id="uploadBtn" class="btn submit" disabled>Upload & Preview</button>
         </div>
     </form>
 
     <hr style="margin: 24px 0;">
 
     <h2>Example CSV</h2>
-    <p>Not sure about the format? <a href="{{ actionUrl('redirects/redirects/download-example-csv') }}">Download example CSV</a></p>
+    <p>Not sure about the format?</p>
+    <a href="{{ actionUrl('redirects/redirects/download-example-csv') }}" class="btn">Download example CSV</a>
 
     <table class="data fullwidth" style="margin-top: 12px;">
         <thead>
@@ -65,4 +66,15 @@
         </tbody>
     </table>
     </form>
+    {% js %}
+        (function() {
+            var fileInput = document.getElementById('csvFile');
+            var uploadBtn = document.getElementById('uploadBtn');
+            if (!fileInput || !uploadBtn) return;
+
+            fileInput.addEventListener('change', function() {
+                uploadBtn.disabled = !this.files.length;
+            });
+        })();
+    {% endjs %}
 {% endblock %}

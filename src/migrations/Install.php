@@ -12,7 +12,7 @@ class Install extends Migration
             'id' => $this->primaryKey(),
             'fromUrl' => $this->string(500)->notNull(),
             'toUrl' => $this->string(500)->notNull(),
-            'type' => $this->smallInteger()->notNull()->defaultValue(301),
+            'type' => $this->smallInteger()->notNull()->defaultValue(302),
             'matchType' => $this->string(10)->notNull()->defaultValue('exact'),
             'label' => $this->string(255)->null(),
             'notes' => $this->text(),

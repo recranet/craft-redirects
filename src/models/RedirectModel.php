@@ -9,7 +9,7 @@ class RedirectModel extends Model
     public ?int $id = null;
     public ?string $fromUrl = null;
     public ?string $toUrl = null;
-    public int $type = 301;
+    public int $type = 302;
     public string $matchType = 'exact';
     public ?string $label = null;
     public ?string $notes = null;
@@ -32,10 +32,10 @@ class RedirectModel extends Model
     public static function typeOptions(): array
     {
         return [
-            301 => '301 — Permanent',
-            302 => '302 — Temporary',
-            307 => '307 — Temporary (preserve method)',
-            308 => '308 — Permanent (preserve method)',
+            302 => '302 — Temporary (browser does not cache)',
+            301 => '301 — Permanent (browser caches redirect)',
+            307 => '307 — Temporary (preserve method, browser does not cache)',
+            308 => '308 — Permanent (preserve method, browser caches redirect)',
         ];
     }
 
