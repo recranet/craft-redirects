@@ -8,34 +8,25 @@ class m260310_000000_add_site_id extends Migration
 {
     public function safeUp(): bool
     {
+        $schema = $this->db->getSchema();
+
         // Add siteId to redirects table
-        $this->addColumn('{{%redirects}}', 'siteId', $this->integer()->null()->after('id'));
-
-        $this->createIndex(null, '{{%redirects}}', ['siteId']);
-
-        $this->addForeignKey(
-            null,
-            '{{%redirects}}',
-            'siteId',
-            '{{%sites}}',
-            'id',
-            'CASCADE',
-        );
+        $redirectsTable = $schema->getTableSchema('{{%redirects}}');
+        if ($redirectsTable && $redirectsTable->getColumn('siteId') === null) {
+            $this->addColumn('{{%redirects}}', 'siteId', $this->integer()->null()->after('id'));
+            $this->createIndex(null, '{{%redirects}}', ['siteId']);
+            $this->addForeignKey(null, '{{%redirects}}', 'siteId', '{{%sites}}', 'id', 'CASCADE');
+        }
 
         // Add siteId to 404s table
-        $this->addColumn('{{%redirects_404s}}', 'siteId', $this->integer()->null()->after('id'));
-
-        $this->addForeignKey(
-            null,
-            '{{%redirects_404s}}',
-            'siteId',
-            '{{%sites}}',
-            'id',
-            'CASCADE',
-        );
+        $notFoundTable = $schema->getTableSchema('{{%redirects_404s}}');
+        if ($notFoundTable && $notFoundTable->getColumn('siteId') === null) {
+            $this->addColumn('{{%redirects_404s}}', 'siteId', $this->integer()->null()->after('id'));
+            $this->addForeignKey(null, '{{%redirects_404s}}', 'siteId', '{{%sites}}', 'id', 'CASCADE');
+        }
 
         // Drop old unique index on url, create new composite unique index
-        $this->dropIndex($this->db->getIndexName('{{%redirects_404s}}', ['url'], true), '{{%redirects_404s}}');
+        $this->dropUniqueIndexByColumns('{{%redirects_404s}}', ['url']);
         $this->createIndex(null, '{{%redirects_404s}}', ['url', 'siteId'], true);
 
         return true;
@@ -44,7 +35,7 @@ class m260310_000000_add_site_id extends Migration
     public function safeDown(): bool
     {
         // Restore original unique index
-        $this->dropIndex($this->db->getIndexName('{{%redirects_404s}}', ['url', 'siteId'], true), '{{%redirects_404s}}');
+        $this->dropUniqueIndexByColumns('{{%redirects_404s}}', ['url', 'siteId']);
         $this->createIndex(null, '{{%redirects_404s}}', ['url'], true);
 
         // Remove FKs and columns
@@ -55,6 +46,18 @@ class m260310_000000_add_site_id extends Migration
         $this->dropColumn('{{%redirects}}', 'siteId');
 
         return true;
+    }
+
+    private function dropUniqueIndexByColumns(string $table, array $columns): void
+    {
+        $indexes = $this->db->getSchema()->getTableIndexes($this->db->getSchema()->getRawTableName($table));
+
+        foreach ($indexes as $index) {
+            if ($index->columnNames === $columns && $index->isUnique) {
+                $this->dropIndex($index->name, $table);
+                return;
+            }
+        }
     }
 
     private function dropForeignKeyByColumn(string $table, string $column): void
