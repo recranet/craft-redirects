@@ -10,9 +10,15 @@ use yii\db\Expression;
 
 class RedirectsService extends Component
 {
-    public function getAllRedirects(): array
+    public function getAllRedirects(?int $siteId = null): array
     {
-        $records = RedirectRecord::find()->orderBy(['id' => SORT_DESC])->all();
+        $query = RedirectRecord::find()->orderBy(['id' => SORT_DESC]);
+
+        if ($siteId !== null) {
+            $query->andWhere(['or', ['siteId' => null], ['siteId' => $siteId]]);
+        }
+
+        $records = $query->all();
 
         return array_map(fn(RedirectRecord $record) => $this->recordToModel($record), $records);
     }
@@ -24,13 +30,14 @@ class RedirectsService extends Component
         return $record ? $this->recordToModel($record) : null;
     }
 
-    public function findRedirectByPath(string $path): ?RedirectModel
+    public function findRedirectByPath(string $path, ?int $siteId = null): ?RedirectModel
     {
         $path = '/' . ltrim($path, '/');
         $pathNoSlash = rtrim($path, '/');
         $pathWithSlash = $pathNoSlash . '/';
 
         $hasMatchType = $this->hasColumn('matchType');
+        $hasSiteId = $this->hasColumn('siteId');
 
         // Try exact match first
         $query = RedirectRecord::find()
@@ -41,6 +48,12 @@ class RedirectsService extends Component
             $query->andWhere(['matchType' => 'exact']);
         }
 
+        if ($hasSiteId && $siteId !== null) {
+            $query->andWhere(['or', ['siteId' => null], ['siteId' => $siteId]]);
+            // Site-specific wins over global: ORDER BY siteId DESC NULLS LAST
+            $query->orderBy(new Expression('CASE WHEN [[siteId]] IS NULL THEN 1 ELSE 0 END ASC'));
+        }
+
         $record = $query->one();
 
         if ($record) {
@@ -49,9 +62,16 @@ class RedirectsService extends Component
 
         // Try regex matches (only if matchType column exists)
         if ($hasMatchType) {
-            $regexRecords = RedirectRecord::find()
-                ->where(['enabled' => true, 'matchType' => 'regex'])
-                ->all();
+            $regexQuery = RedirectRecord::find()
+                ->where(['enabled' => true, 'matchType' => 'regex']);
+
+            if ($hasSiteId && $siteId !== null) {
+                $regexQuery->andWhere(['or', ['siteId' => null], ['siteId' => $siteId]]);
+                // Site-specific first
+                $regexQuery->orderBy(new Expression('CASE WHEN [[siteId]] IS NULL THEN 1 ELSE 0 END ASC'));
+            }
+
+            $regexRecords = $regexQuery->all();
 
             foreach ($regexRecords as $record) {
                 $pattern = '#' . $record->fromUrl . '#i';
@@ -92,12 +112,19 @@ class RedirectsService extends Component
             }
         }
 
-        // Check for duplicate fromUrl (only for exact matches)
+        // Check for duplicate fromUrl (only for exact matches), scoped per site
         if ($model->matchType === 'exact') {
             $normalizedFrom = strtolower(rtrim($model->fromUrl, '/'));
             $duplicateQuery = RedirectRecord::find()
                 ->where(['lower(TRIM(TRAILING \'/\' FROM [[fromUrl]]))' => $normalizedFrom])
                 ->andWhere(['matchType' => 'exact']);
+
+            // Scope duplicate check to same site
+            if ($model->siteId !== null) {
+                $duplicateQuery->andWhere(['siteId' => $model->siteId]);
+            } else {
+                $duplicateQuery->andWhere(['siteId' => null]);
+            }
 
             if ($model->id) {
                 $duplicateQuery->andWhere(['not', ['id' => $model->id]]);
@@ -115,6 +142,7 @@ class RedirectsService extends Component
             return false;
         }
 
+        $record->siteId = $model->siteId;
         $record->fromUrl = $model->fromUrl;
         $record->toUrl = $model->toUrl;
         $record->type = $model->type;
@@ -167,10 +195,16 @@ class RedirectsService extends Component
 
         $toNormalized = strtolower(rtrim($model->toUrl, '/'));
 
-        $chainTarget = RedirectRecord::find()
+        $query = RedirectRecord::find()
             ->where(['lower(TRIM(TRAILING \'/\' FROM [[fromUrl]]))' => $toNormalized])
-            ->andWhere(['matchType' => 'exact'])
-            ->one();
+            ->andWhere(['matchType' => 'exact']);
+
+        // Scope chain detection to same site + global
+        if ($model->siteId !== null) {
+            $query->andWhere(['or', ['siteId' => null], ['siteId' => $model->siteId]]);
+        }
+
+        $chainTarget = $query->one();
 
         if ($chainTarget) {
             return "Chain detected: {$model->toUrl} redirects further to {$chainTarget->toUrl}. Consider pointing directly to {$chainTarget->toUrl}.";
@@ -208,21 +242,28 @@ class RedirectsService extends Component
     }
 
     /**
-     * Export all redirects as CSV string.
+     * Export redirects as CSV string, optionally filtered by site.
      */
-    public function exportCsv(): string
+    public function exportCsv(?int $siteId = null): string
     {
-        $redirects = $this->getAllRedirects();
+        $redirects = $this->getAllRedirects($siteId);
 
         $handle = fopen('php://temp', 'r+');
-        fputcsv($handle, ['from', 'to', 'type', 'matchType', 'label', 'notes', 'enabled', 'hits', 'lastHit', 'created']);
+        fputcsv($handle, ['from', 'to', 'type', 'matchType', 'site', 'label', 'notes', 'enabled', 'hits', 'lastHit', 'created']);
 
         foreach ($redirects as $redirect) {
+            $siteHandle = '';
+            if ($redirect->siteId !== null) {
+                $site = Craft::$app->getSites()->getSiteById($redirect->siteId);
+                $siteHandle = $site ? $site->handle : '';
+            }
+
             fputcsv($handle, [
                 $redirect->fromUrl,
                 $redirect->toUrl,
                 $redirect->type,
                 $redirect->matchType,
+                $siteHandle,
                 $redirect->label,
                 $redirect->notes,
                 $redirect->enabled ? 'yes' : 'no',
@@ -239,7 +280,7 @@ class RedirectsService extends Component
         return $csv;
     }
 
-    public function importRedirects(array $rows): array
+    public function importRedirects(array $rows, ?int $defaultSiteId = null): array
     {
         $imported = 0;
         $errors = [];
@@ -252,6 +293,22 @@ class RedirectsService extends Component
             $model->matchType = $row['matchType'] ?? 'exact';
             $model->label = $row['label'] ?? null;
             $model->notes = $row['notes'] ?? null;
+
+            // Resolve siteId from row data or use default
+            if (!empty($row['siteId'])) {
+                $siteValue = $row['siteId'];
+                // Try as numeric ID first
+                if (is_numeric($siteValue)) {
+                    $site = Craft::$app->getSites()->getSiteById((int)$siteValue);
+                    $model->siteId = $site ? $site->id : $defaultSiteId;
+                } else {
+                    // Try as site handle
+                    $site = Craft::$app->getSites()->getSiteByHandle($siteValue);
+                    $model->siteId = $site ? $site->id : $defaultSiteId;
+                }
+            } else {
+                $model->siteId = $defaultSiteId;
+            }
 
             if ($this->saveRedirect($model)) {
                 $imported++;
@@ -275,6 +332,7 @@ class RedirectsService extends Component
     {
         $model = new RedirectModel();
         $model->id = $record->id;
+        $model->siteId = $record->siteId ? (int)$record->siteId : null;
         $model->fromUrl = $record->fromUrl;
         $model->toUrl = $record->toUrl;
         $model->type = $record->type;

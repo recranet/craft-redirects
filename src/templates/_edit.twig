@@ -13,6 +13,16 @@
         {{ hiddenInput('id', redirect.id) }}
     {% endif %}
 
+    {{ forms.selectField({
+        label: 'Site'|t('redirects'),
+        instructions: 'The site this redirect applies to. Select "All Sites" to apply to every site.'|t('redirects'),
+        id: 'siteId',
+        name: 'siteId',
+        value: redirect.siteId ?? '',
+        options: siteOptions,
+        errors: redirect.getErrors('siteId'),
+    }) }}
+
     {{ forms.lightswitchField({
         label: 'Enabled'|t('redirects'),
         instructions: 'Whether this redirect is active.'|t('redirects'),

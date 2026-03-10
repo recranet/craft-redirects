@@ -8,6 +8,7 @@ use craft\base\Model;
 class RedirectModel extends Model
 {
     public ?int $id = null;
+    public ?int $siteId = null;
     public ?string $fromUrl = null;
     public ?string $toUrl = null;
     public int $type = 302;
@@ -21,6 +22,30 @@ class RedirectModel extends Model
     public ?string $createdByName = null;
     public ?string $dateCreated = null;
     public ?string $dateUpdated = null;
+
+    public function getSiteName(): string
+    {
+        if ($this->siteId === null) {
+            return Craft::t('redirects', 'All Sites');
+        }
+
+        $site = Craft::$app->getSites()->getSiteById($this->siteId);
+
+        return $site ? $site->name : Craft::t('redirects', 'Unknown site');
+    }
+
+    public static function siteOptions(): array
+    {
+        $options = [
+            ['value' => '', 'label' => Craft::t('redirects', 'All Sites')],
+        ];
+
+        foreach (Craft::$app->getSites()->getAllSites() as $site) {
+            $options[] = ['value' => $site->id, 'label' => $site->name];
+        }
+
+        return $options;
+    }
 
     public static function matchTypeOptions(): array
     {
@@ -51,7 +76,7 @@ class RedirectModel extends Model
             ['label', 'string', 'max' => 255],
             ['notes', 'safe'],
             ['enabled', 'boolean'],
-            [['hitCount', 'lastHitAt', 'createdById'], 'safe'],
+            [['hitCount', 'lastHitAt', 'createdById', 'siteId'], 'safe'],
         ];
     }
 }

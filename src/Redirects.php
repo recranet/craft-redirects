@@ -18,7 +18,7 @@ use yii\base\Event;
  */
 class Redirects extends Plugin
 {
-    public string $schemaVersion = '1.4.0';
+    public string $schemaVersion = '1.5.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = true;
 
@@ -76,7 +76,8 @@ class Redirects extends Plugin
 
                 try {
                     $path = $request->getPathInfo();
-                    $redirect = $this->redirectsService->findRedirectByPath($path);
+                    $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+                    $redirect = $this->redirectsService->findRedirectByPath($path, $siteId);
 
                     if ($redirect) {
                         $this->redirectsService->recordHit($redirect->id);
@@ -111,7 +112,8 @@ class Redirects extends Plugin
                 ) {
                     try {
                         $path = $request->getPathInfo();
-                        $this->notFoundService->logNotFound($path);
+                        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+                        $this->notFoundService->logNotFound($path, $siteId);
                     } catch (\Throwable $e) {
                         Craft::warning("Could not log 404: {$e->getMessage()}", __METHOD__);
                     }

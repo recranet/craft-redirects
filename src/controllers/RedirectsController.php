@@ -13,10 +13,15 @@ class RedirectsController extends Controller
 {
     public function actionIndex(): Response
     {
-        $redirects = Redirects::getInstance()->redirectsService->getAllRedirects();
+        $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
+        $siteId = $siteId !== null && $siteId !== '' ? (int)$siteId : null;
+
+        $redirects = Redirects::getInstance()->redirectsService->getAllRedirects($siteId);
 
         return $this->renderTemplate('redirects/_index', [
             'redirects' => $redirects,
+            'sites' => Craft::$app->getSites()->getAllSites(),
+            'selectedSiteId' => $siteId,
         ]);
     }
 
@@ -36,12 +41,19 @@ class RedirectsController extends Controller
             if ($fromUrl) {
                 $redirect->fromUrl = $fromUrl;
             }
+
+            // Pre-fill siteId from query param (e.g. from 404 log)
+            $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
+            if ($siteId !== null && $siteId !== '') {
+                $redirect->siteId = (int)$siteId;
+            }
         }
 
         return $this->renderTemplate('redirects/_edit', [
             'redirect' => $redirect,
             'typeOptions' => RedirectModel::typeOptions(),
             'matchTypeOptions' => RedirectModel::matchTypeOptions(),
+            'siteOptions' => RedirectModel::siteOptions(),
         ]);
     }
 
@@ -53,6 +65,10 @@ class RedirectsController extends Controller
 
         $model = new RedirectModel();
         $model->id = $request->getBodyParam('id') ?: null;
+        $model->siteId = $request->getBodyParam('siteId') !== '' ? $request->getBodyParam('siteId') : null;
+        if ($model->siteId !== null) {
+            $model->siteId = (int)$model->siteId;
+        }
         $model->fromUrl = $request->getBodyParam('fromUrl');
         $model->toUrl = $request->getBodyParam('toUrl');
         $model->type = (int)$request->getBodyParam('type', 301);
@@ -70,6 +86,7 @@ class RedirectsController extends Controller
                 'redirect' => $model,
                 'typeOptions' => RedirectModel::typeOptions(),
                 'matchTypeOptions' => RedirectModel::matchTypeOptions(),
+                'siteOptions' => RedirectModel::siteOptions(),
             ]);
 
             return null;
@@ -170,7 +187,10 @@ class RedirectsController extends Controller
 
     public function actionExport(): Response
     {
-        $csv = Redirects::getInstance()->redirectsService->exportCsv();
+        $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
+        $siteId = $siteId !== null && $siteId !== '' ? (int)$siteId : null;
+
+        $csv = Redirects::getInstance()->redirectsService->exportCsv($siteId);
 
         $response = Craft::$app->getResponse();
         $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
@@ -184,15 +204,17 @@ class RedirectsController extends Controller
 
     public function actionImport(): Response
     {
-        return $this->renderTemplate('redirects/_import');
+        return $this->renderTemplate('redirects/_import', [
+            'siteOptions' => RedirectModel::siteOptions(),
+        ]);
     }
 
     public function actionDownloadExampleCsv(): Response
     {
-        $csv = "from,to,type,label,notes\n";
-        $csv .= "/old-page,/new-page,301,Livegang,Homepage moved\n";
-        $csv .= "/blog/old-post,/articles/new-post,301,Redesign,Blog restructured\n";
-        $csv .= "/promo,https://example.com/campaign,302,Campagne,Temporary promo redirect\n";
+        $csv = "from,to,type,site,label,notes\n";
+        $csv .= "/old-page,/new-page,301,,Livegang,Homepage moved\n";
+        $csv .= "/blog/old-post,/articles/new-post,301,default,Redesign,Blog restructured\n";
+        $csv .= "/promo,https://example.com/campaign,302,,Campagne,Temporary promo redirect\n";
 
         $response = Craft::$app->getResponse();
         $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
@@ -210,25 +232,33 @@ class RedirectsController extends Controller
 
         if (!$file) {
             Craft::$app->getSession()->setError(Craft::t('redirects', 'No file uploaded.'));
-            return $this->renderTemplate('redirects/_import');
+            return $this->renderTemplate('redirects/_import', [
+                'siteOptions' => RedirectModel::siteOptions(),
+            ]);
         }
 
         if (!in_array($file->getExtension(), ['csv', 'txt'])) {
             Craft::$app->getSession()->setError(Craft::t('redirects', 'Please upload a CSV file.'));
-            return $this->renderTemplate('redirects/_import');
+            return $this->renderTemplate('redirects/_import', [
+                'siteOptions' => RedirectModel::siteOptions(),
+            ]);
         }
 
         $handle = fopen($file->tempName, 'r');
         if (!$handle) {
             Craft::$app->getSession()->setError(Craft::t('redirects', 'Could not read file.'));
-            return $this->renderTemplate('redirects/_import');
+            return $this->renderTemplate('redirects/_import', [
+                'siteOptions' => RedirectModel::siteOptions(),
+            ]);
         }
 
         $headers = fgetcsv($handle, 0, ',', '"');
         if (!$headers) {
             fclose($handle);
             Craft::$app->getSession()->setError(Craft::t('redirects', 'CSV file is empty or invalid.'));
-            return $this->renderTemplate('redirects/_import');
+            return $this->renderTemplate('redirects/_import', [
+                'siteOptions' => RedirectModel::siteOptions(),
+            ]);
         }
 
         // Read up to 5 preview rows
@@ -251,6 +281,7 @@ class RedirectsController extends Controller
             'headers' => $headers,
             'previewRows' => $previewRows,
             'tempFilename' => $tempFilename,
+            'siteOptions' => RedirectModel::siteOptions(),
         ]);
     }
 
@@ -261,18 +292,24 @@ class RedirectsController extends Controller
         $request = Craft::$app->getRequest();
         $tempFilename = $request->getRequiredBodyParam('tempFilename');
         $mapping = $request->getRequiredBodyParam('mapping');
+        $defaultSiteId = $request->getBodyParam('defaultSiteId');
+        $defaultSiteId = $defaultSiteId !== null && $defaultSiteId !== '' ? (int)$defaultSiteId : null;
 
         // Validate temp filename to prevent directory traversal
         if (preg_match('/[\/\\\\]/', $tempFilename)) {
             Craft::$app->getSession()->setError(Craft::t('redirects', 'Invalid file reference.'));
-            return $this->renderTemplate('redirects/_import');
+            return $this->renderTemplate('redirects/_import', [
+                'siteOptions' => RedirectModel::siteOptions(),
+            ]);
         }
 
         $tempPath = Craft::$app->getPath()->getTempPath() . DIRECTORY_SEPARATOR . $tempFilename;
 
         if (!file_exists($tempPath)) {
             Craft::$app->getSession()->setError(Craft::t('redirects', 'Temporary file not found. Please re-upload.'));
-            return $this->renderTemplate('redirects/_import');
+            return $this->renderTemplate('redirects/_import', [
+                'siteOptions' => RedirectModel::siteOptions(),
+            ]);
         }
 
         $handle = fopen($tempPath, 'r');
@@ -297,7 +334,7 @@ class RedirectsController extends Controller
         // Clean up temp file
         @unlink($tempPath);
 
-        $results = Redirects::getInstance()->redirectsService->importRedirects($rows);
+        $results = Redirects::getInstance()->redirectsService->importRedirects($rows, $defaultSiteId);
 
         return $this->renderTemplate('redirects/_import_results', [
             'imported' => $results['imported'],
@@ -310,10 +347,15 @@ class RedirectsController extends Controller
 
     public function action404s(): Response
     {
-        $notFounds = Redirects::getInstance()->notFoundService->getAllNotFounds();
+        $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
+        $siteId = $siteId !== null && $siteId !== '' ? (int)$siteId : null;
+
+        $notFounds = Redirects::getInstance()->notFoundService->getAllNotFounds($siteId);
 
         return $this->renderTemplate('redirects/_404s', [
             'notFounds' => $notFounds,
+            'sites' => Craft::$app->getSites()->getAllSites(),
+            'selectedSiteId' => $siteId,
         ]);
     }
 
@@ -333,7 +375,10 @@ class RedirectsController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        Redirects::getInstance()->notFoundService->deleteAllNotFounds();
+        $siteId = Craft::$app->getRequest()->getBodyParam('siteId');
+        $siteId = $siteId !== null && $siteId !== '' ? (int)$siteId : null;
+
+        Redirects::getInstance()->notFoundService->deleteAllNotFounds($siteId);
 
         return $this->asJson(['success' => true]);
     }

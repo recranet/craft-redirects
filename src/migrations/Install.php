@@ -10,6 +10,7 @@ class Install extends Migration
     {
         $this->createTable('{{%redirects}}', [
             'id' => $this->primaryKey(),
+            'siteId' => $this->integer()->null(),
             'fromUrl' => $this->string(500)->notNull(),
             'toUrl' => $this->string(500)->notNull(),
             'type' => $this->smallInteger()->notNull()->defaultValue(302),
@@ -26,6 +27,16 @@ class Install extends Migration
         ]);
 
         $this->createIndex(null, '{{%redirects}}', ['fromUrl']);
+        $this->createIndex(null, '{{%redirects}}', ['siteId']);
+
+        $this->addForeignKey(
+            null,
+            '{{%redirects}}',
+            'siteId',
+            '{{%sites}}',
+            'id',
+            'CASCADE',
+        );
 
         $this->addForeignKey(
             null,
@@ -39,6 +50,7 @@ class Install extends Migration
         // 404 log table
         $this->createTable('{{%redirects_404s}}', [
             'id' => $this->primaryKey(),
+            'siteId' => $this->integer()->null(),
             'url' => $this->string(500)->notNull(),
             'hitCount' => $this->integer()->notNull()->defaultValue(1),
             'lastHitAt' => $this->dateTime()->notNull(),
@@ -47,7 +59,16 @@ class Install extends Migration
             'uid' => $this->uid(),
         ]);
 
-        $this->createIndex(null, '{{%redirects_404s}}', ['url'], true);
+        $this->createIndex(null, '{{%redirects_404s}}', ['url', 'siteId'], true);
+
+        $this->addForeignKey(
+            null,
+            '{{%redirects_404s}}',
+            'siteId',
+            '{{%sites}}',
+            'id',
+            'CASCADE',
+        );
 
         return true;
     }

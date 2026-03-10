@@ -1,4 +1,5 @@
 {% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
 
 {% set title = 'Map CSV Columns'|t('redirects') %}
 {% set selectedSubnavItem = 'import' %}
@@ -24,6 +25,7 @@
                                     <option value="toUrl" {% if header|lower in ['to', 'to url', 'tourl', 'destination', 'new url', 'new', 'target'] %}selected{% endif %}>{{ 'To URL'|t('redirects') }}</option>
                                     <option value="type" {% if header|lower in ['type', 'status', 'code', 'status code', 'http status'] %}selected{% endif %}>{{ 'Type'|t('redirects') }}</option>
                                     <option value="matchType" {% if header|lower in ['match', 'match type', 'matchtype', 'pattern'] %}selected{% endif %}>{{ 'Match Type'|t('redirects') }}</option>
+                                    <option value="siteId" {% if header|lower in ['site', 'siteid', 'site id', 'site handle'] %}selected{% endif %}>{{ 'Site'|t('redirects') }}</option>
                                     <option value="label" {% if header|lower in ['label', 'tag', 'category', 'categorie', 'reden', 'reason'] %}selected{% endif %}>{{ 'Label'|t('redirects') }}</option>
                                     <option value="notes" {% if header|lower in ['notes', 'note', 'comment', 'comments', 'description'] %}selected{% endif %}>{{ 'Notes'|t('redirects') }}</option>
                                 </select>
@@ -42,6 +44,17 @@
                 {% endfor %}
             </tbody>
         </table>
+
+        <div class="field" style="margin-top: 24px;">
+            {{ forms.selectField({
+                label: 'Default site for imported redirects'|t('redirects'),
+                instructions: 'Used when a row does not specify a site. Select "All Sites" to make them global.'|t('redirects'),
+                id: 'defaultSiteId',
+                name: 'defaultSiteId',
+                value: '',
+                options: siteOptions,
+            }) }}
+        </div>
 
         <div class="btngroup" style="margin-top: 16px;">
             <button type="submit" class="btn submit">{{ 'Import'|t('redirects') }}</button>

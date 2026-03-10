@@ -46,6 +46,14 @@ return [
     'Row' => 'Rij',
     'Data' => 'Data',
     'Errors' => 'Fouten',
+    'Site' => 'Site',
+
+    // Site
+    'All Sites' => 'Alle sites',
+    'Unknown site' => 'Onbekende site',
+    'The site this redirect applies to. Select "All Sites" to apply to every site.' => 'De site waarvoor deze redirect geldt. Kies "Alle sites" om op elke site toe te passen.',
+    'Default site for imported redirects' => 'Standaard site voor geïmporteerde redirects',
+    'Used when a row does not specify a site. Select "All Sites" to make them global.' => 'Wordt gebruikt wanneer een rij geen site bevat. Kies "Alle sites" om ze globaal te maken.',
 
     // Toggle & status
     'On' => 'Aan',

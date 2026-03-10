@@ -10,13 +10,20 @@ use yii\db\Expression;
 
 class NotFoundService extends Component
 {
-    public function logNotFound(string $url): void
+    public function logNotFound(string $url, ?int $siteId = null): void
     {
         $normalized = '/' . ltrim($url, '/');
 
-        $record = NotFoundRecord::find()
-            ->where(['url' => $normalized])
-            ->one();
+        $query = NotFoundRecord::find()
+            ->where(['url' => $normalized]);
+
+        if ($siteId !== null) {
+            $query->andWhere(['siteId' => $siteId]);
+        } else {
+            $query->andWhere(['siteId' => null]);
+        }
+
+        $record = $query->one();
 
         if ($record) {
             Craft::$app->getDb()->createCommand()
@@ -28,15 +35,22 @@ class NotFoundService extends Component
         } else {
             $record = new NotFoundRecord();
             $record->url = $normalized;
+            $record->siteId = $siteId;
             $record->hitCount = 1;
             $record->lastHitAt = (new \DateTime())->format('Y-m-d H:i:s');
             $record->save();
         }
     }
 
-    public function getAllNotFounds(): array
+    public function getAllNotFounds(?int $siteId = null): array
     {
-        $records = NotFoundRecord::find()->orderBy(['hitCount' => SORT_DESC])->all();
+        $query = NotFoundRecord::find()->orderBy(['hitCount' => SORT_DESC]);
+
+        if ($siteId !== null) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $records = $query->all();
 
         return array_map(fn(NotFoundRecord $record) => $this->recordToModel($record), $records);
     }
@@ -48,15 +62,20 @@ class NotFoundService extends Component
         return $record ? (bool)$record->delete() : false;
     }
 
-    public function deleteAllNotFounds(): void
+    public function deleteAllNotFounds(?int $siteId = null): void
     {
-        NotFoundRecord::deleteAll();
+        if ($siteId !== null) {
+            NotFoundRecord::deleteAll(['siteId' => $siteId]);
+        } else {
+            NotFoundRecord::deleteAll();
+        }
     }
 
     private function recordToModel(NotFoundRecord $record): NotFoundModel
     {
         $model = new NotFoundModel();
         $model->id = $record->id;
+        $model->siteId = $record->siteId ? (int)$record->siteId : null;
         $model->url = $record->url;
         $model->hitCount = (int)$record->hitCount;
         $model->lastHitAt = $record->lastHitAt;
