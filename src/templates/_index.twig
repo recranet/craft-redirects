@@ -23,6 +23,24 @@
         </div>
     {% endif %}
 
+    {# Test redirect #}
+    <div style="margin-bottom: 24px; padding: 14px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+        <h3 style="margin: 0 0 10px;">{{ 'Test URL'|t('redirects') }}</h3>
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <input type="text" id="testPath" class="text" placeholder="{{ 'Enter a path, e.g. /old-page'|t('redirects') }}" style="min-width: 280px;">
+            {% if sites|length > 1 %}
+                <select id="testSiteId" class="text">
+                    <option value="">{{ 'All Sites'|t('redirects') }}</option>
+                    {% for site in sites %}
+                        <option value="{{ site.id }}" {% if selectedSiteId == site.id %}selected{% endif %}>{{ site.name }}</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+            <button class="btn" id="testBtn">{{ 'Test'|t('redirects') }}</button>
+        </div>
+        <div id="testResult" style="margin-top: 10px; display: none;"></div>
+    </div>
+
     {% if redirects|length %}
         {# Search bar #}
         <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
@@ -143,6 +161,10 @@
         .toggle-enabled.toggle-on:hover {
             background-color: #15803d;
             border-color: #15803d;
+        }
+        .btn[disabled], .btn.disabled {
+            opacity: 0.5;
+            pointer-events: none;
         }
     {% endcss %}
 
@@ -324,5 +346,61 @@
                 });
             });
         });
+        // --- Test redirect ---
+        (function() {
+            var testBtn = document.getElementById('testBtn');
+            var testPath = document.getElementById('testPath');
+            var testResult = document.getElementById('testResult');
+            if (!testBtn || !testPath || !testResult) return;
+
+            testBtn.addEventListener('click', function() {
+                var path = testPath.value.trim();
+                if (!path) return;
+
+                var data = { path: path };
+                var siteSelect = document.getElementById('testSiteId');
+                if (siteSelect && siteSelect.value) {
+                    data.siteId = siteSelect.value;
+                }
+
+                testBtn.disabled = true;
+                testBtn.classList.add('disabled');
+
+                Craft.sendActionRequest('POST', 'redirects/redirects/test', {
+                    data: data
+                }).then(function(response) {
+                    var d = response.data;
+                    if (d.found) {
+                        testResult.innerHTML =
+                            '<div style="padding: 10px 14px; background: #dcfce7; border: 1px solid #86efac; border-radius: 4px; color: #166534;">' +
+                            '<strong>{{ 'Match found'|t('redirects')|e('js') }}</strong><br>' +
+                            '<strong>{{ 'From'|t('redirects')|e('js') }}:</strong> ' + Craft.escapeHtml(d.fromUrl) +
+                            ' &rarr; <strong>{{ 'To'|t('redirects')|e('js') }}:</strong> ' + Craft.escapeHtml(d.toUrl) +
+                            '<br><strong>{{ 'Type'|t('redirects')|e('js') }}:</strong> ' + d.type +
+                            ' &middot; <strong>{{ 'Match'|t('redirects')|e('js') }}:</strong> ' + Craft.escapeHtml(d.matchType) +
+                            ' &middot; <a href="' + Craft.getCpUrl('redirects/' + d.id) + '">{{ 'Edit'|t('redirects')|e('js') }}</a>' +
+                            '</div>';
+                    } else {
+                        testResult.innerHTML =
+                            '<div style="padding: 10px 14px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 4px; color: #991b1b;">' +
+                            '{{ 'No matching redirect found.'|t('redirects')|e('js') }}' +
+                            '</div>';
+                    }
+                    testResult.style.display = 'block';
+                }).catch(function() {
+                    Craft.cp.displayError('{{ 'Test failed.'|t('redirects')|e('js') }}');
+                }).finally(function() {
+                    testBtn.disabled = false;
+                    testBtn.classList.remove('disabled');
+                });
+            });
+
+            testPath.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    testBtn.click();
+                }
+            });
+        })();
     {% endjs %}
 {% endblock %}

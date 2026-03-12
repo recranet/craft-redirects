@@ -126,6 +126,14 @@ return [
     '404 Logging' => '404 Logging',
     'Log all 404 (not found) requests.' => 'Log alle 404 (niet gevonden) verzoeken.',
 
+    // Test redirect
+    'Test URL' => 'URL testen',
+    'Test' => 'Testen',
+    'Enter a path, e.g. /old-page' => 'Voer een pad in, bijv. /old-page',
+    'Match found' => 'Match gevonden',
+    'No matching redirect found.' => 'Geen overeenkomende redirect gevonden.',
+    'Test failed.' => 'Test mislukt.',
+
     // Empty states
     'No redirects yet.' => 'Nog geen redirects.',
     'No 404s logged yet.' => 'Nog geen 404s gelogd.',

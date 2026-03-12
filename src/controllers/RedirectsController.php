@@ -343,6 +343,34 @@ class RedirectsController extends Controller
         ]);
     }
 
+    // --- Test redirect ---
+
+    public function actionTest(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $request = Craft::$app->getRequest();
+        $path = $request->getRequiredBodyParam('path');
+        $siteId = $request->getBodyParam('siteId');
+        $siteId = $siteId !== null && $siteId !== '' ? (int)$siteId : null;
+
+        $redirect = Redirects::getInstance()->redirectsService->findRedirectByPath($path, $siteId);
+
+        if (!$redirect) {
+            return $this->asJson(['found' => false]);
+        }
+
+        return $this->asJson([
+            'found' => true,
+            'id' => $redirect->id,
+            'fromUrl' => $redirect->fromUrl,
+            'toUrl' => $redirect->toUrl,
+            'type' => $redirect->type,
+            'matchType' => $redirect->matchType,
+        ]);
+    }
+
     // --- 404 Log ---
 
     public function action404s(): Response
