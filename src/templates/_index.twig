@@ -37,7 +37,8 @@
     {% if sites|length > 1 %}
         <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
             <label for="siteFilter" style="font-weight: 600;">{{ 'Site'|t('redirects') }}:</label>
-            <select id="siteFilter" class="text" onchange="window.location.href='{{ cpUrl('redirects') }}' + (this.value ? '?siteId=' + this.value : '')">
+            {% set baseUrl = cpUrl('redirects') %}
+            <select id="siteFilter" class="text" onchange="var base='{{ baseUrl }}'; window.location.href=base+(this.value?(base.includes('?')?'&':'?')+'siteId='+this.value:'')">
                 <option value="">{{ 'All Sites'|t('redirects') }}</option>
                 {% for site in sites %}
                     <option value="{{ site.id }}" {% if selectedSiteId == site.id %}selected{% endif %}>{{ site.name }}</option>
