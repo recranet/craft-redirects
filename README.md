@@ -49,6 +49,8 @@ Create and manage redirects. Each redirect has:
 
 **Exact match** redirects are case-insensitive and normalize trailing slashes — `/old-page` and `/old-page/` are treated the same.
 
+**Subfolder sites** (e.g. a German site at `https://example.com/de`): a From URL can be entered with or without the site's base path — `/de/old-page` and `/old-page` both match a request to `https://example.com/de/old-page`. The path without the base path is checked first.
+
 **Query strings are preserved**: `/old-page?utm_source=x` redirects to the destination with `?utm_source=x` appended (merged with `&` if the destination already has a query string).
 
 **Regex match** redirects use PCRE patterns. Captured groups can be referenced in the destination URL:

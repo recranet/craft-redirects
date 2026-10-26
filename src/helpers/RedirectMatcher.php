@@ -99,6 +99,32 @@ final class RedirectMatcher
     }
 
     /**
+     * Match a front-end request: first the site-relative path, then the full path.
+     *
+     * On a subfolder site (e.g. https://example.com/de) Craft strips the base path,
+     * so "/de/old-page" arrives as "old-page". Redirects can be entered either way.
+     *
+     * @param string $path Site-relative path (Craft's getPathInfo())
+     * @param string|null $fullPath Path including the site's base path (Craft's getFullPath())
+     */
+    public static function matchRequest(
+        array $redirects,
+        string $path,
+        ?string $fullPath,
+        ?int $siteId = null,
+        ?string $hostInfo = null,
+        ?\DateTimeInterface $now = null,
+    ): ?array {
+        $match = self::match($redirects, $path, $siteId, $hostInfo, $now);
+
+        if ($match === null && $fullPath !== null && trim($fullPath, '/') !== trim($path, '/')) {
+            $match = self::match($redirects, $fullPath, $siteId, $hostInfo, $now);
+        }
+
+        return $match;
+    }
+
+    /**
      * Append the incoming query string to a destination URL.
      */
     public static function appendQueryString(string $toUrl, string $queryString): string

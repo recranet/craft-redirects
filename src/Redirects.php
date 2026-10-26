@@ -203,9 +203,15 @@ class Redirects extends Plugin
                 }
 
                 try {
-                    $path = $request->getPathInfo();
+                    // getPathInfo() has the site's base path stripped (e.g. "/de" on a subfolder site);
+                    // getFullPath() keeps it, so redirects entered as "/de/old-page" match too
                     $siteId = Craft::$app->getSites()->getCurrentSite()->id;
-                    $redirect = $this->redirectsService->findRedirectByPath($path, $siteId, $request->getHostInfo());
+                    $redirect = $this->redirectsService->findRedirectByPath(
+                        $request->getPathInfo(),
+                        $siteId,
+                        $request->getHostInfo(),
+                        $request->getFullPath(),
+                    );
 
                     if ($redirect) {
                         // Preserve the incoming query string (e.g. utm parameters)

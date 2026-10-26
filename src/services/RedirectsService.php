@@ -36,9 +36,13 @@ class RedirectsService extends Component
         return $record ? $this->recordToModel($record) : null;
     }
 
-    public function findRedirectByPath(string $path, ?int $siteId = null, ?string $hostInfo = null): ?RedirectModel
+    /**
+     * @param string|null $fullPath The request path including the site's base path (e.g. "de/page"
+     *   when the site lives at /de). Tried when the site-relative $path doesn't match.
+     */
+    public function findRedirectByPath(string $path, ?int $siteId = null, ?string $hostInfo = null, ?string $fullPath = null): ?RedirectModel
     {
-        $row = RedirectMatcher::match($this->getEnabledRedirectRows(), $path, $siteId, $hostInfo);
+        $row = RedirectMatcher::matchRequest($this->getEnabledRedirectRows(), $path, $fullPath, $siteId, $hostInfo);
 
         return $row ? $this->rowToModel($row) : null;
     }

@@ -263,6 +263,55 @@ class RedirectMatcherTest extends TestCase
         $this->assertSame('/older', $match['toUrl']);
     }
 
+    // --- Subfolder sites (e.g. /de) ---
+
+    public function testSubfolderSiteMatchesFromUrlWithBasePath(): void
+    {
+        // Request /de/old-page on a site at /de: Craft passes "old-page" as path info
+        $row = $this->row(['fromUrl' => '/de/old-page', 'toUrl' => '/de/new-page']);
+        $match = RedirectMatcher::matchRequest([$row], 'old-page', 'de/old-page');
+
+        $this->assertNotNull($match);
+        $this->assertSame('/de/new-page', $match['toUrl']);
+    }
+
+    public function testSubfolderSiteMatchesSiteRelativeFromUrl(): void
+    {
+        $match = RedirectMatcher::matchRequest([$this->row()], 'old-page', 'de/old-page');
+
+        $this->assertNotNull($match);
+    }
+
+    public function testSiteRelativePathIsTriedFirst(): void
+    {
+        $relative = $this->row(['id' => 1, 'fromUrl' => '/old-page', 'toUrl' => '/relative']);
+        $full = $this->row(['id' => 2, 'fromUrl' => '/de/old-page', 'toUrl' => '/full']);
+        $match = RedirectMatcher::matchRequest([$full, $relative], 'old-page', 'de/old-page');
+
+        $this->assertSame('/relative', $match['toUrl']);
+    }
+
+    public function testSubfolderSiteMatchesFullUrlWithBasePath(): void
+    {
+        $row = $this->row(['fromUrl' => 'https://example.com/de/old-page']);
+        $match = RedirectMatcher::matchRequest([$row], 'old-page', 'de/old-page', null, 'https://example.com');
+
+        $this->assertNotNull($match);
+    }
+
+    public function testSubfolderSiteRegexAnchoredOnBasePath(): void
+    {
+        $row = $this->row(['fromUrl' => '^/de/blog/(.*)$', 'toUrl' => '/de/articles/$1', 'matchType' => 'regex']);
+        $match = RedirectMatcher::matchRequest([$row], 'blog/post', 'de/blog/post');
+
+        $this->assertSame('/de/articles/post', $match['toUrl']);
+    }
+
+    public function testMatchRequestWithoutFullPath(): void
+    {
+        $this->assertNull(RedirectMatcher::matchRequest([$this->row(['fromUrl' => '/de/old-page'])], 'old-page', null));
+    }
+
     // --- Query string handling ---
 
     public function testAppendQueryString(): void
