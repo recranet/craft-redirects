@@ -148,22 +148,30 @@ class RedirectsService extends Component
      */
     public function createAutoRedirect(string $oldUri, string $newUri, int $siteId, int $type = 301): void
     {
+        // fromUrl stays site-relative (matched against the request's path info), toUrl is the browser
+        // path and needs the site's base path on a subfolder site (e.g. "/de"), or visitors end up on
+        // the other site's URL
+        $basePath = RedirectMatcher::basePath(Craft::$app->getSites()->getSiteById($siteId)?->getBaseUrl());
         $fromUrl = '/' . ltrim($oldUri, '/');
-        $toUrl = '/' . ltrim($newUri, '/');
+        $toUrl = RedirectMatcher::sitePath($newUri, $basePath);
 
         $fromNormalized = strtolower(rtrim($fromUrl, '/'));
-        $toNormalized = strtolower(rtrim($toUrl, '/'));
+        $toNormalized = strtolower(rtrim('/' . ltrim($newUri, '/'), '/'));
 
         if ($fromNormalized === $toNormalized) {
             return;
         }
+
+        // Both forms, so redirects stored before this fix (without base path) are still found
+        $oldPaths = array_unique([$fromNormalized, strtolower(rtrim(RedirectMatcher::sitePath($oldUri, $basePath), '/'))]);
+        $newPaths = array_unique([$toNormalized, strtolower(rtrim($toUrl, '/'))]);
 
         $siteCondition = ['or', ['siteId' => null], ['siteId' => $siteId]];
 
         // Remove redirects that would shadow the new URI (and cause loops),
         // e.g. when an element moves back to a previously used slug
         $loopRecords = RedirectRecord::find()
-            ->where(['lower(TRIM(TRAILING \'/\' FROM [[fromUrl]]))' => $toNormalized])
+            ->where(['in', 'lower(TRIM(TRAILING \'/\' FROM [[fromUrl]]))', $newPaths])
             ->andWhere(['matchType' => 'exact'])
             ->andWhere($siteCondition)
             ->all();
@@ -174,7 +182,7 @@ class RedirectsService extends Component
 
         // Re-point existing redirects that targeted the old URI, so no chains form
         $chainRecords = RedirectRecord::find()
-            ->where(['lower(TRIM(TRAILING \'/\' FROM [[toUrl]]))' => $fromNormalized])
+            ->where(['in', 'lower(TRIM(TRAILING \'/\' FROM [[toUrl]]))', $oldPaths])
             ->andWhere($siteCondition)
             ->all();
 
@@ -229,7 +237,7 @@ class RedirectsService extends Component
         $toNormalized = strtolower(rtrim($model->toUrl, '/'));
 
         $query = RedirectRecord::find()
-            ->where(['lower(TRIM(TRAILING \'/\' FROM [[fromUrl]]))' => $toNormalized])
+            ->where(['in', 'lower(TRIM(TRAILING \'/\' FROM [[fromUrl]]))', $newPaths])
             ->andWhere(['matchType' => 'exact']);
 
         // Scope chain detection to same site + global

@@ -328,4 +328,42 @@ class RedirectMatcherTest extends TestCase
     {
         $this->assertSame('/new', RedirectMatcher::appendQueryString('/new', ''));
     }
+
+    // --- Subfolder sites (auto-redirect paths) ---
+
+    public function testBasePathOfSubfolderSite(): void
+    {
+        $this->assertSame('/de', RedirectMatcher::basePath('https://example.com/de/'));
+        $this->assertSame('/de', RedirectMatcher::basePath('https://example.com/de'));
+    }
+
+    public function testBasePathOfRootSite(): void
+    {
+        $this->assertSame('', RedirectMatcher::basePath('https://example.com/'));
+        $this->assertSame('', RedirectMatcher::basePath('https://example.com'));
+        $this->assertSame('', RedirectMatcher::basePath(null));
+    }
+
+    public function testSitePathAddsBasePath(): void
+    {
+        $this->assertSame('/de/neue-seite', RedirectMatcher::sitePath('neue-seite', '/de'));
+        $this->assertSame('/de/neue-seite', RedirectMatcher::sitePath('/neue-seite', '/de/'));
+        $this->assertSame('/new-page', RedirectMatcher::sitePath('new-page', ''));
+    }
+
+    public function testAutoRedirectOnSubfolderSiteKeepsBasePath(): void
+    {
+        // What createAutoRedirect() stores on a "/de" site: site-relative fromUrl, toUrl with base path
+        $row = $this->row([
+            'siteId' => 2,
+            'fromUrl' => '/alte-seite',
+            'toUrl' => RedirectMatcher::sitePath('neue-seite', RedirectMatcher::basePath('https://example.com/de/')),
+        ]);
+
+        // Craft strips "/de" from the path info, the full path keeps it
+        $match = RedirectMatcher::matchRequest([$row], 'alte-seite', '/de/alte-seite', 2);
+
+        $this->assertNotNull($match);
+        $this->assertSame('/de/neue-seite', $match['toUrl']);
+    }
 }

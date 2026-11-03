@@ -136,6 +136,25 @@ final class RedirectMatcher
         return $toUrl . (str_contains($toUrl, '?') ? '&' : '?') . $queryString;
     }
 
+    /**
+     * The path part of a site's base URL, without trailing slash: "https://example.com/de/" -> "/de", root sites -> "".
+     */
+    public static function basePath(?string $baseUrl): string
+    {
+        $path = (string)parse_url((string)$baseUrl, PHP_URL_PATH);
+
+        return rtrim($path, '/');
+    }
+
+    /**
+     * A site-relative URI as a root-relative path that includes the site's base path:
+     * ("old-page", "/de") -> "/de/old-page", ("old-page", "") -> "/old-page".
+     */
+    public static function sitePath(string $uri, string $basePath = ''): string
+    {
+        return rtrim($basePath, '/') . '/' . ltrim($uri, '/');
+    }
+
     private static function isActive(array $row, ?int $siteId, \DateTimeInterface $now): bool
     {
         if (!($row['enabled'] ?? true)) {
