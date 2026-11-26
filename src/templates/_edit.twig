@@ -107,6 +107,14 @@
         errors: redirect.getErrors('expiryDate'),
     }) }}
 
+    {% if redirect.id %}
+        {{ forms.field({
+            label: 'Hits'|t('redirects'),
+        }, redirect.hitCount
+            ? '{count} times, last on {date}'|t('redirects', { count: redirect.hitCount|number, date: redirect.lastHitAt ? redirect.lastHitAt|datetime('short') : '—' })
+            : 'Not triggered yet.'|t('redirects')) }}
+    {% endif %}
+
     {{ forms.textareaField({
         label: 'Notes'|t('redirects'),
         instructions: 'Optional notes about this redirect.'|t('redirects'),

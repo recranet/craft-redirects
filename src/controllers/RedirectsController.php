@@ -28,12 +28,27 @@ class RedirectsController extends Controller
         $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
         $siteId = $siteId !== null && $siteId !== '' ? (int)$siteId : null;
 
-        $redirects = Redirects::getInstance()->redirectsService->getAllRedirects($siteId);
+        $label = Craft::$app->getRequest()->getQueryParam('label');
+        $label = is_string($label) && $label !== '' ? $label : null;
+
+        $service = Redirects::getInstance()->redirectsService;
+        $labels = $service->getLabels($siteId);
+
+        $selectedGroup = null;
+        foreach ($labels as $group) {
+            if ($group['label'] === $label) {
+                $selectedGroup = $group;
+                break;
+            }
+        }
 
         return $this->renderTemplate('redirects/_index', [
-            'redirects' => $redirects,
+            'redirects' => $service->getAllRedirects($siteId, $label),
             'sites' => Craft::$app->getSites()->getAllSites(),
             'selectedSiteId' => $siteId,
+            'labels' => $labels,
+            'selectedLabel' => $label,
+            'selectedGroup' => $selectedGroup,
         ]);
     }
 
@@ -179,6 +194,40 @@ class RedirectsController extends Controller
         Redirects::getInstance()->redirectsService->bulkDelete((array)$ids);
 
         return $this->asJson(['success' => true]);
+    }
+
+    public function actionBulkResetHits(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $ids = Craft::$app->getRequest()->getRequiredBodyParam('ids');
+        Redirects::getInstance()->redirectsService->resetHits((array)$ids);
+
+        return $this->asJson(['success' => true]);
+    }
+
+    /**
+     * Enable or disable every redirect with a given label (group).
+     */
+    public function actionToggleGroup(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $request = Craft::$app->getRequest();
+        $label = (string)$request->getRequiredBodyParam('label');
+        $enabled = (bool)$request->getRequiredBodyParam('enabled');
+        $siteId = $request->getBodyParam('siteId');
+        $siteId = $siteId !== null && $siteId !== '' ? (int)$siteId : null;
+
+        if ($label === '') {
+            return $this->asFailure(Craft::t('redirects', 'No group selected.'));
+        }
+
+        $count = Redirects::getInstance()->redirectsService->setEnabledByLabel($label, $enabled, $siteId);
+
+        return $this->asJson(['success' => true, 'count' => $count]);
     }
 
     public function actionBulkChangeType(): Response
