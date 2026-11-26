@@ -16,6 +16,8 @@ final class RedirectMatcher
      * @param int|null $siteId Current site ID (null matches any)
      * @param string|null $hostInfo e.g. "https://example.com", enables full-URL matching
      * @param \DateTimeInterface|null $now Reference time for expiry checks (UTC)
+     * @param string|null $queryString The request's query string, without "?". When null, a query
+     *   string in $path is used instead (e.g. from the Test URL tool)
      * @return array|null The matched row, with toUrl resolved for regex matches
      */
     public static function match(
@@ -24,8 +26,13 @@ final class RedirectMatcher
         ?int $siteId = null,
         ?string $hostInfo = null,
         ?\DateTimeInterface $now = null,
+        ?string $queryString = null,
     ): ?array {
         $now = $now ?? new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+
+        // The query string never takes part in path matching
+        [$path, $pathQuery] = self::splitQuery($path);
+        $requestPairs = self::queryPairs($queryString ?? $pathQuery);
 
         // Accept a full URL as input (e.g. from the Test URL tool)
         if (preg_match('#^(https?://[^/]+)(/.*)?$#i', $path, $matches)) {
@@ -43,6 +50,7 @@ final class RedirectMatcher
         }
 
         $exactMatches = [];
+        $queryMatches = [];
         $regexRows = [];
 
         foreach ($redirects as $row) {
@@ -55,10 +63,31 @@ final class RedirectMatcher
                 continue;
             }
 
-            $from = strtolower(rtrim((string)($row['fromUrl'] ?? ''), '/'));
-            if (in_array($from, $candidates, true)) {
-                $exactMatches[] = $row;
+            [$fromPath, $fromQuery] = self::splitQuery((string)($row['fromUrl'] ?? ''));
+            $from = strtolower(rtrim($fromPath, '/'));
+            if (!in_array($from, $candidates, true)) {
+                continue;
             }
+
+            // A From URL with a query string only matches requests that carry all of its parameters
+            $fromPairs = self::queryPairs($fromQuery);
+            if (!$fromPairs) {
+                $exactMatches[] = $row;
+            } elseif (!array_diff($fromPairs, $requestPairs)) {
+                $queryMatches[] = $row + ['_queryParams' => count($fromPairs)];
+            }
+        }
+
+        // A matching query string wins over the bare path: most parameters first,
+        // then site-specific before global, then oldest first
+        if ($queryMatches) {
+            usort($queryMatches, function (array $a, array $b) {
+                return [-$a['_queryParams'], ($a['siteId'] ?? null) === null, (int)($a['id'] ?? 0)]
+                    <=> [-$b['_queryParams'], ($b['siteId'] ?? null) === null, (int)($b['id'] ?? 0)];
+            });
+            unset($queryMatches[0]['_queryParams']);
+
+            return $queryMatches[0];
         }
 
         // Site-specific wins over global
@@ -106,6 +135,7 @@ final class RedirectMatcher
      *
      * @param string $path Site-relative path (Craft's getPathInfo())
      * @param string|null $fullPath Path including the site's base path (Craft's getFullPath())
+     * @param string|null $queryString The request's query string, without "?"
      */
     public static function matchRequest(
         array $redirects,
@@ -114,11 +144,12 @@ final class RedirectMatcher
         ?int $siteId = null,
         ?string $hostInfo = null,
         ?\DateTimeInterface $now = null,
+        ?string $queryString = null,
     ): ?array {
-        $match = self::match($redirects, $path, $siteId, $hostInfo, $now);
+        $match = self::match($redirects, $path, $siteId, $hostInfo, $now, $queryString);
 
         if ($match === null && $fullPath !== null && trim($fullPath, '/') !== trim($path, '/')) {
-            $match = self::match($redirects, $fullPath, $siteId, $hostInfo, $now);
+            $match = self::match($redirects, $fullPath, $siteId, $hostInfo, $now, $queryString);
         }
 
         return $match;
@@ -134,6 +165,62 @@ final class RedirectMatcher
         }
 
         return $toUrl . (str_contains($toUrl, '?') ? '&' : '?') . $queryString;
+    }
+
+    /**
+     * The request's query string without the parameters a From URL matched on, so those
+     * aren't carried over to the destination: ("/book?type=264", "type=264&utm_source=x") -> "utm_source=x".
+     */
+    public static function remainingQueryString(string $fromUrl, string $queryString): string
+    {
+        $fromPairs = self::queryPairs(self::splitQuery($fromUrl)[1]);
+        if (!$fromPairs) {
+            return $queryString;
+        }
+
+        $remaining = array_filter(
+            explode('&', $queryString),
+            fn(string $pair) => $pair !== '' && !in_array(self::normalizePair($pair), $fromPairs, true),
+        );
+
+        return implode('&', $remaining);
+    }
+
+    /**
+     * Split a URL or path into the part before "?" and the query string after it.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private static function splitQuery(string $url): array
+    {
+        $parts = explode('?', $url, 2);
+
+        return [$parts[0], $parts[1] ?? ''];
+    }
+
+    /**
+     * A query string as a list of normalized "key=value" pairs, so encoding ("type%5B0%5D" vs
+     * "type[0]"), case and parameter order don't matter when comparing.
+     *
+     * @return string[]
+     */
+    private static function queryPairs(string $queryString): array
+    {
+        $pairs = [];
+        foreach (explode('&', $queryString) as $pair) {
+            if ($pair !== '') {
+                $pairs[] = self::normalizePair($pair);
+            }
+        }
+
+        return array_values(array_unique($pairs));
+    }
+
+    private static function normalizePair(string $pair): string
+    {
+        $parts = explode('=', $pair, 2);
+
+        return strtolower(urldecode($parts[0]) . '=' . urldecode($parts[1] ?? ''));
     }
 
     /**

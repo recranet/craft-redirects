@@ -206,19 +206,23 @@ class Redirects extends Plugin
                     // getPathInfo() has the site's base path stripped (e.g. "/de" on a subfolder site);
                     // getFullPath() keeps it, so redirects entered as "/de/old-page" match too
                     $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+                    $queryString = $request->getQueryStringWithoutPath();
                     $redirect = $this->redirectsService->findRedirectByPath(
                         $request->getPathInfo(),
                         $siteId,
                         $request->getHostInfo(),
                         $request->getFullPath(),
+                        $queryString,
                     );
 
                     if ($redirect) {
-                        // Preserve the incoming query string (e.g. utm parameters)
-                        $toUrl = RedirectMatcher::appendQueryString(
-                            $redirect->toUrl,
-                            $request->getQueryStringWithoutPath(),
-                        );
+                        // Preserve the incoming query string (e.g. utm parameters), minus the
+                        // parameters an exact redirect matched on
+                        if ($redirect->matchType === 'exact') {
+                            $queryString = RedirectMatcher::remainingQueryString((string)$redirect->fromUrl, $queryString);
+                        }
+
+                        $toUrl = RedirectMatcher::appendQueryString($redirect->toUrl, $queryString);
 
                         Craft::$app->getResponse()->redirect($toUrl, $redirect->type);
                         Craft::$app->end();

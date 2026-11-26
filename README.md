@@ -53,6 +53,8 @@ Create and manage redirects. Each redirect has:
 
 **Query strings are preserved**: `/old-page?utm_source=x` redirects to the destination with `?utm_source=x` appended (merged with `&` if the destination already has a query string).
 
+**Matching on a query string**: an exact From URL may include a query string, e.g. `/book?type[0]=264`. It then only matches requests that carry all of those parameters — encoding (`type%5B0%5D` or `type[0]`), case, parameter order and extra parameters such as `utm_source` don't matter. A redirect with a query string wins over one for the bare path (`/book`), and the one with the most parameters wins. The matched parameters are dropped from the destination; any other parameters are still appended. Regex redirects match on the path only.
+
 **Regex match** redirects use PCRE patterns. Captured groups can be referenced in the destination URL:
 
 | From URL             | To URL            | Example                                          |

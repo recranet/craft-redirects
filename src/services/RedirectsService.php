@@ -39,10 +39,12 @@ class RedirectsService extends Component
     /**
      * @param string|null $fullPath The request path including the site's base path (e.g. "de/page"
      *   when the site lives at /de). Tried when the site-relative $path doesn't match.
+     * @param string|null $queryString The request's query string, without "?". Exact redirects whose
+     *   From URL has a query string only match when the request carries those parameters.
      */
-    public function findRedirectByPath(string $path, ?int $siteId = null, ?string $hostInfo = null, ?string $fullPath = null): ?RedirectModel
+    public function findRedirectByPath(string $path, ?int $siteId = null, ?string $hostInfo = null, ?string $fullPath = null, ?string $queryString = null): ?RedirectModel
     {
-        $row = RedirectMatcher::matchRequest($this->getEnabledRedirectRows(), $path, $fullPath, $siteId, $hostInfo);
+        $row = RedirectMatcher::matchRequest($this->getEnabledRedirectRows(), $path, $fullPath, $siteId, $hostInfo, null, $queryString);
 
         return $row ? $this->rowToModel($row) : null;
     }
