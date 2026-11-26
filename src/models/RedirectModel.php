@@ -18,6 +18,8 @@ class RedirectModel extends Model
     public ?string $notes = null;
     public bool $enabled = true;
     public ?\DateTime $expiryDate = null;
+    public int $hitCount = 0;
+    public ?\DateTime $lastHitAt = null;
 
     public function getSiteName(): string
     {

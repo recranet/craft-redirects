@@ -27,7 +27,7 @@ use yii\base\Event;
  */
 class Redirects extends Plugin
 {
-    public string $schemaVersion = '2.2.0';
+    public string $schemaVersion = '2.3.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = true;
 
@@ -223,6 +223,8 @@ class Redirects extends Plugin
                         }
 
                         $toUrl = RedirectMatcher::appendQueryString($redirect->toUrl, $queryString);
+
+                        $this->redirectsService->recordHit($redirect->id);
 
                         Craft::$app->getResponse()->redirect($toUrl, $redirect->type);
                         Craft::$app->end();

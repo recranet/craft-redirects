@@ -33,17 +33,40 @@
         </div>
     </details>
 
-    {# Site filter #}
-    {% if sites|length > 1 %}
-        <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
-            <label for="siteFilter" style="font-weight: 600;">{{ 'Site'|t('redirects') }}:</label>
-            {% set baseUrl = cpUrl('redirects') %}
-            <select id="siteFilter" class="text" onchange="var base='{{ baseUrl }}'; window.location.href=base+(this.value?(base.includes('?')?'&':'?')+'siteId='+this.value:'')">
-                <option value="">{{ 'All Sites'|t('redirects') }}</option>
-                {% for site in sites %}
-                    <option value="{{ site.id }}" {% if selectedSiteId == site.id %}selected{% endif %}>{{ site.name }}</option>
-                {% endfor %}
-            </select>
+    {# Filters: site + group (label) #}
+    {% if sites|length > 1 or labels|length %}
+        <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            {% if sites|length > 1 %}
+                <label for="siteFilter" style="font-weight: 600;">{{ 'Site'|t('redirects') }}:</label>
+                <select id="siteFilter" class="text redirects-filter">
+                    <option value="">{{ 'All Sites'|t('redirects') }}</option>
+                    {% for site in sites %}
+                        <option value="{{ site.id }}" {% if selectedSiteId == site.id %}selected{% endif %}>{{ site.name }}</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+            {% if labels|length %}
+                <label for="labelFilter" style="font-weight: 600;">{{ 'Group'|t('redirects') }}:</label>
+                <select id="labelFilter" class="text redirects-filter">
+                    <option value="">{{ 'All groups'|t('redirects') }}</option>
+                    {% for group in labels %}
+                        <option value="{{ group.label }}" {% if selectedLabel == group.label %}selected{% endif %}>{{ group.label }} ({{ group.enabled }}/{{ group.total }})</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {# Group on/off #}
+    {% if selectedGroup %}
+        {% set groupState = selectedGroup.enabled == 0 ? 'off' : (selectedGroup.enabled == selectedGroup.total ? 'on' : 'partial') %}
+        <div id="groupBar" style="margin-bottom: 16px; padding: 10px 14px; background: #f1f5f9; border-radius: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span>
+                <strong>{{ 'Group'|t('redirects') }} “{{ selectedGroup.label }}”</strong> —
+                {{ '{enabled} of {total} enabled'|t('redirects', { enabled: selectedGroup.enabled, total: selectedGroup.total }) }}
+            </span>
+            <button class="btn small group-toggle{% if groupState == 'on' %} disabled{% endif %}" data-enabled="1">{{ 'Enable group'|t('redirects') }}</button>
+            <button class="btn small group-toggle{% if groupState == 'off' %} disabled{% endif %}" data-enabled="0">{{ 'Disable group'|t('redirects') }}</button>
         </div>
     {% endif %}
 
@@ -76,6 +99,7 @@
             <span id="bulkCount">0</span> {{ 'selected'|t('redirects') }} —
             <button class="btn small" id="bulkEnableBtn">{{ 'Enable'|t('redirects') }}</button>
             <button class="btn small" id="bulkDisableBtn">{{ 'Disable'|t('redirects') }}</button>
+            <button class="btn small" id="bulkResetHitsBtn">{{ 'Reset hits'|t('redirects') }}</button>
             <button class="btn small caution" id="bulkDeleteBtn">{{ 'Delete'|t('redirects') }}</button>
             <span style="margin-left: 8px; border-left: 1px solid #cbd5e1; padding-left: 10px;">
                 <select id="bulkTypeSelect" class="text">
@@ -88,22 +112,25 @@
             </span>
         </div>
 
+        <div style="overflow-x: auto;">
         <table class="data fullwidth sortable-table">
             <thead>
                 <tr>
                     <th style="width: 30px;"><input type="checkbox" id="selectAll"></th>
-                    <th class="sortable" data-sort="string" data-index="1">{{ 'Enabled'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="string">{{ 'Enabled'|t('redirects') }}</th>
                     {% if sites|length > 1 %}
-                        <th class="sortable" data-sort="string" data-index="2">{{ 'Site'|t('redirects') }}</th>
+                        <th class="sortable" data-sort="string">{{ 'Site'|t('redirects') }}</th>
                     {% endif %}
-                    <th class="sortable" data-sort="string" data-index="{{ sites|length > 1 ? 3 : 2 }}">{{ 'From'|t('redirects') }}</th>
-                    <th class="sortable" data-sort="string" data-index="{{ sites|length > 1 ? 4 : 3 }}">{{ 'To'|t('redirects') }}</th>
-                    <th class="sortable" data-sort="number" data-index="{{ sites|length > 1 ? 5 : 4 }}">{{ 'Type'|t('redirects') }}</th>
-                    <th class="sortable" data-sort="string" data-index="{{ sites|length > 1 ? 6 : 5 }}">{{ 'Match'|t('redirects') }}</th>
-                    <th class="sortable" data-sort="number" data-index="{{ sites|length > 1 ? 7 : 6 }}">{{ 'Priority'|t('redirects') }}</th>
-                    <th class="sortable" data-sort="string" data-index="{{ sites|length > 1 ? 8 : 7 }}">{{ 'Label'|t('redirects') }}</th>
-                    <th class="sortable" data-sort="string" data-index="{{ sites|length > 1 ? 9 : 8 }}">{{ 'Notes'|t('redirects') }}</th>
-                    <th class="sortable" data-sort="string" data-index="{{ sites|length > 1 ? 10 : 9 }}">{{ 'Expires'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="string">{{ 'From'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="string">{{ 'To'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="number">{{ 'Type'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="string">{{ 'Match'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="number">{{ 'Priority'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="string">{{ 'Label'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="string">{{ 'Notes'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="string">{{ 'Expires'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="number">{{ 'Hits'|t('redirects') }}</th>
+                    <th class="sortable" data-sort="number">{{ 'Last triggered'|t('redirects') }}</th>
                     <th></th>
                 </tr>
             </thead>
@@ -126,10 +153,14 @@
                         <td>{{ redirect.type }}</td>
                         <td>{{ redirect.matchType }}</td>
                         <td>{{ redirect.priority }}</td>
-                        <td>{{ redirect.label ?? '' }}</td>
+                        <td>{% if redirect.label %}<a href="{{ cpUrl('redirects', { siteId: selectedSiteId, label: redirect.label }|filter(v => v is not null)) }}" title="{{ 'Show this group'|t('redirects') }}">{{ redirect.label }}</a>{% endif %}</td>
                         <td>{{ redirect.notes }}</td>
                         <td{% if redirect.expiryDate and redirect.expiryDate < now %} style="color: #dc2626;"{% endif %}>
                             {{ redirect.expiryDate ? redirect.expiryDate|date('short') : '' }}
+                        </td>
+                        <td data-value="{{ redirect.hitCount }}">{{ redirect.hitCount|number }}</td>
+                        <td data-value="{{ redirect.lastHitAt ? redirect.lastHitAt.getTimestamp() : 0 }}"{% if redirect.lastHitAt %} title="{{ redirect.lastHitAt|datetime('short') }}"{% endif %}>
+                            {{ redirect.lastHitAt ? redirect.lastHitAt|timestamp('short') : '—' }}
                         </td>
                         <td class="thin">
                             <a href="{{ cpUrl('redirects/' ~ redirect.id) }}" class="btn small" title="{{ 'Edit'|t('redirects') }}">{{ 'Edit'|t('redirects') }}</a>
@@ -139,8 +170,9 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     {% else %}
-        <p>{{ 'No redirects yet.'|t('redirects') }}</p>
+        <p>{{ (selectedLabel ? 'No redirects in this group.' : 'No redirects yet.')|t('redirects') }}</p>
     {% endif %}
 
     {% css %}
@@ -191,6 +223,41 @@
     {% endcss %}
 
     {% js %}
+        // --- Site / group filters ---
+        document.querySelectorAll('.redirects-filter').forEach(function(select) {
+            select.addEventListener('change', function() {
+                var params = {};
+                var site = document.getElementById('siteFilter');
+                var label = document.getElementById('labelFilter');
+                if (site && site.value) params.siteId = site.value;
+                if (label && label.value) params.label = label.value;
+                window.location.href = Craft.getCpUrl('redirects', params);
+            });
+        });
+
+        // --- Group on/off ---
+        document.querySelectorAll('.group-toggle').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var enabled = this.dataset.enabled === '1';
+                var msg = enabled
+                    ? '{{ 'Enable all redirects in this group?'|t('redirects')|e('js') }}'
+                    : '{{ 'Disable all redirects in this group?'|t('redirects')|e('js') }}';
+                if (!confirm(msg)) return;
+
+                Craft.sendActionRequest('POST', 'redirects/redirects/toggle-group', {
+                    data: {
+                        label: {{ (selectedLabel ?? '')|json_encode|raw }},
+                        siteId: {{ (selectedSiteId ?? '')|json_encode|raw }},
+                        enabled: enabled ? 1 : 0
+                    }
+                }).then(function() {
+                    window.location.reload();
+                }).catch(function() {
+                    Craft.cp.displayError('{{ 'Could not toggle group.'|t('redirects')|e('js') }}');
+                });
+            });
+        });
+
         // --- Search / filter ---
         (function() {
             var input = document.getElementById('redirectSearch');
@@ -257,6 +324,11 @@
             document.getElementById('bulkDisableBtn').addEventListener('click', function() {
                 bulkAction('bulk-disable');
             });
+            document.getElementById('bulkResetHitsBtn').addEventListener('click', function() {
+                if (confirm('{{ 'Reset the hit counter of these redirects?'|t('redirects')|e('js') }}')) {
+                    bulkAction('bulk-reset-hits');
+                }
+            });
             document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
                 if (confirm('{{ 'Are you sure you want to delete these redirects?'|t('redirects')|e('js') }}')) {
                     bulkAction('bulk-delete');
@@ -289,7 +361,7 @@
 
             headers.forEach(function(th) {
                 th.addEventListener('click', function() {
-                    var index = parseInt(th.dataset.index);
+                    var index = th.cellIndex;
                     var type = th.dataset.sort;
 
                     if (currentSort.index === index) {

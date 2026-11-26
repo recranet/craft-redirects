@@ -15,6 +15,8 @@ A redirect management plugin for Craft CMS 5. Manage URL redirects — all from 
 - **Bulk actions** — enable, disable, or delete multiple redirects at once
 - **CSV import/export** — import redirects from CSV or export your full list
 - **Labels & notes** — organize redirects with optional metadata
+- **Groups** — filter the overview on a label and enable or disable the whole group at once
+- **Hit counter** — see how often each redirect fired and when it was last triggered
 
 ## Requirements
 

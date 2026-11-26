@@ -7,6 +7,7 @@ use craft\base\Component;
 use craft\db\Query;
 use craft\helpers\DateTimeHelper;
 use craft\helpers\Db;
+use yii\db\Expression;
 use recranet\redirects\helpers\RedirectMatcher;
 use recranet\redirects\models\RedirectModel;
 use recranet\redirects\records\RedirectRecord;
@@ -16,17 +17,107 @@ class RedirectsService extends Component
     private const CACHE_KEY = 'redirects:enabled-rows';
     private const CACHE_DURATION = 3600;
 
-    public function getAllRedirects(?int $siteId = null): array
+    /**
+     * @param string|null $label Only redirects with this label (group); null for all.
+     */
+    public function getAllRedirects(?int $siteId = null, ?string $label = null): array
     {
         $query = RedirectRecord::find()->orderBy(['id' => SORT_DESC]);
 
-        if ($siteId !== null) {
-            $query->andWhere(['or', ['siteId' => null], ['siteId' => $siteId]]);
-        }
+        $this->applyFilters($query, $siteId, $label);
 
         $records = $query->all();
 
         return array_map(fn(RedirectRecord $record) => $this->recordToModel($record), $records);
+    }
+
+    /**
+     * All labels in use, sorted, with how many redirects carry each and how many of those are enabled.
+     *
+     * @return array<int, array{label: string, total: int, enabled: int}>
+     */
+    public function getLabels(?int $siteId = null): array
+    {
+        $query = (new Query())
+            ->select(['label', 'total' => 'COUNT(*)', 'enabled' => 'SUM(CASE WHEN [[enabled]] THEN 1 ELSE 0 END)'])
+            ->from(RedirectRecord::tableName())
+            ->where(['not', ['label' => null]])
+            ->andWhere(['not', ['label' => '']])
+            ->groupBy(['label'])
+            ->orderBy(['label' => SORT_ASC]);
+
+        $this->applyFilters($query, $siteId, null);
+
+        return array_map(fn(array $row) => [
+            'label' => $row['label'],
+            'total' => (int)$row['total'],
+            'enabled' => (int)$row['enabled'],
+        ], $query->all());
+    }
+
+    /**
+     * Enable or disable every redirect in a group (label), within the same site scope as the index.
+     */
+    public function setEnabledByLabel(string $label, bool $enabled, ?int $siteId = null): int
+    {
+        $ids = $this->applyFilters(
+            (new Query())->select(['id'])->from(RedirectRecord::tableName()),
+            $siteId,
+            $label,
+        )->column();
+
+        return $ids ? $this->bulkSetEnabled($ids, $enabled) : 0;
+    }
+
+    /**
+     * Count a redirect firing. A single UPDATE that doesn't touch the redirect cache, so it stays cheap.
+     */
+    public function recordHit(int $id): void
+    {
+        try {
+            Craft::$app->getDb()->createCommand()
+                ->update(
+                    RedirectRecord::tableName(),
+                    [
+                        'hitCount' => new Expression('[[hitCount]] + 1'),
+                        'lastHitAt' => Db::prepareDateForDb(new \DateTime()),
+                    ],
+                    ['id' => $id],
+                    [],
+                    false,
+                )
+                ->execute();
+        } catch (\Throwable $e) {
+            Craft::warning("Could not record redirect hit: {$e->getMessage()}", __METHOD__);
+        }
+    }
+
+    /**
+     * Reset the hit counter of the given redirects.
+     */
+    public function resetHits(array $ids): int
+    {
+        return Craft::$app->getDb()->createCommand()
+            ->update(RedirectRecord::tableName(), ['hitCount' => 0, 'lastHitAt' => null], ['id' => $ids])
+            ->execute();
+    }
+
+    /**
+     * @template T of \yii\db\Query
+     * @param T $query
+     * @return T
+     */
+    private function applyFilters(\yii\db\Query $query, ?int $siteId, ?string $label): \yii\db\Query
+    {
+        if ($siteId !== null) {
+            $query->andWhere(['or', ['siteId' => null], ['siteId' => $siteId]]);
+        }
+
+        if ($label !== null && $label !== '') {
+            $query->andWhere(['label' => $label]);
+        }
+
+        return $query;
     }
 
     public function getRedirectById(int $id): ?RedirectModel
@@ -239,7 +330,7 @@ class RedirectsService extends Component
         $toNormalized = strtolower(rtrim($model->toUrl, '/'));
 
         $query = RedirectRecord::find()
-            ->where(['in', 'lower(TRIM(TRAILING \'/\' FROM [[fromUrl]]))', $newPaths])
+            ->where(['lower(TRIM(TRAILING \'/\' FROM [[fromUrl]]))' => $toNormalized])
             ->andWhere(['matchType' => 'exact']);
 
         // Scope chain detection to same site + global
@@ -401,6 +492,8 @@ class RedirectsService extends Component
         $model->notes = $row['notes'] ?? null;
         $model->enabled = (bool)$row['enabled'];
         $model->expiryDate = !empty($row['expiryDate']) ? DateTimeHelper::toDateTime($row['expiryDate']) : null;
+        $model->hitCount = (int)($row['hitCount'] ?? 0);
+        $model->lastHitAt = !empty($row['lastHitAt']) ? DateTimeHelper::toDateTime($row['lastHitAt']) : null;
 
         return $model;
     }
@@ -419,6 +512,8 @@ class RedirectsService extends Component
         $model->notes = $record->notes;
         $model->enabled = (bool)$record->enabled;
         $model->expiryDate = $record->expiryDate ? DateTimeHelper::toDateTime($record->expiryDate) : null;
+        $model->hitCount = (int)($record->hitCount ?? 0);
+        $model->lastHitAt = $record->lastHitAt ? DateTimeHelper::toDateTime($record->lastHitAt) : null;
 
         return $model;
     }
