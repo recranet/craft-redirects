@@ -366,4 +366,84 @@ class RedirectMatcherTest extends TestCase
         $this->assertNotNull($match);
         $this->assertSame('/de/neue-seite', $match['toUrl']);
     }
+
+    // --- Query strings ---
+
+    public function testPathRuleStillMatchesRequestWithQueryString(): void
+    {
+        $match = RedirectMatcher::match([$this->row()], '/old-page', null, null, null, 'utm_source=x');
+
+        $this->assertNotNull($match);
+        $this->assertSame('/new-page', $match['toUrl']);
+    }
+
+    public function testQueryRuleMatchesOnlyWithItsParameters(): void
+    {
+        $rows = [$this->row(['fromUrl' => '/boeken?type%5B0%5D=264', 'toUrl' => '/chalets'])];
+
+        $this->assertNotNull(RedirectMatcher::match($rows, '/boeken', null, null, null, 'type%5B0%5D=264'));
+        $this->assertNull(RedirectMatcher::match($rows, '/boeken', null, null, null, 'type%5B0%5D=265'));
+        $this->assertNull(RedirectMatcher::match($rows, '/boeken', null, null, null, ''));
+        $this->assertNull(RedirectMatcher::match($rows, '/boeken'));
+    }
+
+    public function testQueryRuleIgnoresEncodingCaseOrderAndExtraParameters(): void
+    {
+        $rows = [$this->row(['fromUrl' => '/boeken/?type%5B0%5D=264&persons=4', 'toUrl' => '/chalets'])];
+
+        $match = RedirectMatcher::match($rows, '/Boeken/', null, null, null, 'utm_source=x&persons=4&type[0]=264');
+
+        $this->assertNotNull($match);
+        $this->assertSame('/chalets', $match['toUrl']);
+        $this->assertArrayNotHasKey('_queryParams', $match);
+    }
+
+    public function testQueryRuleWinsOverPathRuleAndMostSpecificWins(): void
+    {
+        $rows = [
+            $this->row(['id' => 1, 'fromUrl' => '/boeken', 'toUrl' => '/zoek-en-boek']),
+            $this->row(['id' => 2, 'fromUrl' => '/boeken?type[0]=264', 'toUrl' => '/chalets']),
+            $this->row(['id' => 3, 'fromUrl' => '/boeken?type[0]=264&persons=4', 'toUrl' => '/chalets-4']),
+        ];
+
+        $this->assertSame('/chalets-4', RedirectMatcher::match($rows, '/boeken', null, null, null, 'type[0]=264&persons=4')['toUrl']);
+        $this->assertSame('/chalets', RedirectMatcher::match($rows, '/boeken', null, null, null, 'type[0]=264')['toUrl']);
+        $this->assertSame('/zoek-en-boek', RedirectMatcher::match($rows, '/boeken', null, null, null, 'type[0]=1')['toUrl']);
+    }
+
+    public function testQueryStringInPathIsUsedWhenNoneIsPassed(): void
+    {
+        $rows = [$this->row(['fromUrl' => '/boeken?type[0]=264', 'toUrl' => '/chalets'])];
+
+        $this->assertNotNull(RedirectMatcher::match($rows, '/boeken?type%5B0%5D=264'));
+        $this->assertNotNull(RedirectMatcher::match($rows, 'https://example.com/boeken?type%5B0%5D=264'));
+        $this->assertNull(RedirectMatcher::match($rows, '/boeken?type%5B0%5D=1'));
+    }
+
+    public function testQueryRuleWithFullUrlAndOnSubfolderSite(): void
+    {
+        $full = [$this->row(['fromUrl' => 'https://example.com/boeken?type=264', 'toUrl' => '/chalets'])];
+        $this->assertNotNull(RedirectMatcher::match($full, '/boeken', null, 'https://example.com', null, 'type=264'));
+        $this->assertNull(RedirectMatcher::match($full, '/boeken', null, 'https://other.com', null, 'type=264'));
+
+        $sub = [$this->row(['fromUrl' => '/de/buchen?type=264', 'toUrl' => '/de/chalets'])];
+        $this->assertNotNull(RedirectMatcher::matchRequest($sub, 'buchen', 'de/buchen', null, null, null, 'type=264'));
+        $this->assertNull(RedirectMatcher::matchRequest($sub, 'buchen', 'de/buchen', null, null, null, 'type=1'));
+    }
+
+    public function testRegexIgnoresQueryString(): void
+    {
+        $rows = [$this->row(['fromUrl' => '^/blog/(.*)$', 'toUrl' => '/articles/$1', 'matchType' => 'regex'])];
+
+        $match = RedirectMatcher::match($rows, '/blog/post?page=2');
+
+        $this->assertSame('/articles/post', $match['toUrl']);
+    }
+
+    public function testRemainingQueryStringDropsMatchedParameters(): void
+    {
+        $this->assertSame('utm_source=x', RedirectMatcher::remainingQueryString('/boeken?type%5B0%5D=264', 'type[0]=264&utm_source=x'));
+        $this->assertSame('', RedirectMatcher::remainingQueryString('/boeken?type=264', 'type=264'));
+        $this->assertSame('type=264&utm_source=x', RedirectMatcher::remainingQueryString('/boeken', 'type=264&utm_source=x'));
+    }
 }
